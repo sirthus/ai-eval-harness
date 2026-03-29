@@ -46,6 +46,8 @@ def run(
     thresholds: dict = cfg.get("thresholds", {})
     weights: dict = thresholds.get("weights")
 
+    diagnostics: dict = cfg.get("diagnostics", {})
+
     gold_map = _load_gold(gold_path)
     outputs = _load_generated(generated_dir)
 
@@ -55,7 +57,9 @@ def run(
         if gold is None:
             logger.warning("No gold annotation for %s — skipping", req_id)
             continue
-        result = scoring.score(output, gold, weights=weights, thresholds=thresholds)
+        result = scoring.score(
+            output, gold, weights=weights, thresholds=thresholds, diagnostics=diagnostics
+        )
         results.append(result)
         logger.info(
             "%s → %s (weighted=%.2f, coverage=%.0f%%)",

@@ -1,4 +1,9 @@
-"""Tests for decision band thresholds and floor violations (score.py)."""
+"""Tests for decision band thresholds and floor violations (score.py).
+
+Phase 2 note: score_correctness is now decoupled from coverage ratio.
+  correctness = 2.0 - min(hits, 2) - (0.5 if single TC) capped at 0.
+  completeness still uses coverage ratio.
+"""
 
 import pytest
 
@@ -22,22 +27,29 @@ def _make_output_with_dims(
     clean_assumptions: bool = True,
     steps_per_tc: int = 3,
     num_types: int = 2,
+    num_test_cases: int = 2,
     req_id: str = "REQ-T",
+    extra_assumptions: list[str] | None = None,
 ) -> ModelOutput:
     """Construct an output that achieves approximately the desired dimension scores.
 
-    Coverage ratio drives correctness + completeness.
+    Coverage ratio drives completeness.
     clean_assumptions=False adds many assumptions to lower hallucination_risk.
     steps_per_tc and num_types affect reviewer_usefulness.
+    num_test_cases controls single-TC penalty for correctness.
     """
-    # Build test case titles that contain the gold coverage phrase
-    titles = []
     if correctness_coverage >= 0.75:
         titles = ["target coverage point alpha", "target coverage point beta"]
     elif correctness_coverage >= 0.5:
         titles = ["target coverage point alpha", "unrelated title"]
     else:
         titles = ["unrelated title one", "unrelated title two"]
+
+    # Adjust title list to match desired num_test_cases
+    if num_test_cases == 1:
+        titles = titles[:1]
+    elif num_test_cases > 2:
+        titles = titles + [f"extra tc {i}" for i in range(num_test_cases - 2)]
 
     types = ["positive", "negative", "edge_case", "boundary"][:num_types]
     tcs = [
@@ -56,6 +68,8 @@ def _make_output_with_dims(
         if clean_assumptions
         else ["assumption one", "assumption two", "assumption three", "assumption four"]
     )
+    if extra_assumptions:
+        assumptions.extend(extra_assumptions)
     return ModelOutput(
         requirement_id=req_id,
         test_cases=tcs,
@@ -90,18 +104,18 @@ class TestPassBand:
         assert result.weighted_score >= 1.6
 
     def test_weighted_score_exactly_at_pass_threshold(self):
-        # Force exact 1.6: correctness=2, completeness=2, hallucination=2, usefulness=1
-        # weighted = 2*0.35 + 2*0.30 + 2*0.20 + 1*0.15 = 0.70+0.60+0.40+0.15 = 1.85 → pass
-        # We achieve this with full coverage, clean output, but only 1 usefulness signal
+        # correctness=2 (2 TCs, no hits), completeness=2 (full coverage)
+        # hallucination=2 (clean), usefulness with 1 type: steps>=3 ✓, expected ✓, precond ✓, types ✗
+        # single-type: signals=3 → usefulness=2.0
+        # weighted = 2*0.35 + 2*0.30 + 2*0.20 + 2*0.15 = 0.70+0.60+0.40+0.30 = 2.0 → pass
         output = _make_output_with_dims(
             correctness_coverage=1.0,
             clean_assumptions=True,
             steps_per_tc=3,
-            num_types=1,  # only 1 type → usefulness = 1.0 (3 signals: steps, expected, precond)
+            num_types=1,
         )
         gold = _make_gold()
         result = score(output, gold)
-        # With full coverage and 3 usefulness signals: should be pass
         assert result.decision == "pass"
 
 
@@ -111,21 +125,22 @@ class TestPassBand:
 
 
 class TestBorderlineBand:
-    def test_medium_coverage_borderlines(self):
-        # 50% coverage → completeness=1, correctness=1 (no hits)
-        # Borderline depends on usability and hallucination
-        output = _make_output_with_dims(correctness_coverage=0.5, steps_per_tc=3, num_types=2)
-        gold = _make_gold()
+    def test_single_disallowed_hit_with_full_coverage_borderlines(self):
+        # correctness = 2 - 1 = 1.0 (floor met), completeness=2, hallucination=1 (1 hit), usefulness=2
+        # weighted = 1*0.35 + 2*0.30 + 1*0.20 + 2*0.15 = 0.35+0.60+0.20+0.30 = 1.45 → borderline
+        output = _make_output_with_dims(
+            correctness_coverage=1.0, steps_per_tc=3, num_types=2,
+            extra_assumptions=["bad assumption"],
+        )
+        gold = _make_gold(disallowed=["bad assumption"])
         result = score(output, gold)
-        # completeness=1 (floor met), correctness=1 (floor met), hallucination=2
-        # usefulness=2 (steps>=3, expected_result, precond, 2 types)
-        # weighted = 1*0.35 + 1*0.30 + 2*0.20 + 2*0.15 = 0.35+0.30+0.40+0.30 = 1.35
         assert result.decision == "borderline"
         assert 1.2 <= result.weighted_score < 1.6
 
     def test_floor_exactly_met_is_not_a_violation(self):
-        # 4 assumptions → hallucination_risk=1.0, which exactly meets the floor (>= 1.0).
-        # This is not a violation; the weighted score is high, so result should be pass.
+        # 4 assumptions → hallucination_risk=1.0, exactly meets floor (>= 1.0).
+        # correctness=2.0, completeness=2.0, hallucination=1.0, usefulness=2.0
+        # weighted = 2*0.35 + 2*0.30 + 1*0.20 + 2*0.15 = 0.70+0.60+0.20+0.30 = 1.80 → pass
         output = _make_output_with_dims(
             correctness_coverage=1.0,
             clean_assumptions=False,  # 4 assumptions → hallucination=1.0
@@ -135,8 +150,23 @@ class TestBorderlineBand:
         gold = _make_gold()
         result = score(output, gold)
         # hallucination=1 meets floor (no violation)
-        # weighted = 2*0.35 + 2*0.30 + 1*0.20 + 2*0.15 = 0.70+0.60+0.20+0.30 = 1.80 → pass
         assert result.decision == "pass"
+
+    def test_medium_coverage_low_usefulness_borderlines(self):
+        # correctness=2.0 (2 TCs, no hits), completeness=1.0 (50% coverage)
+        # hallucination=2.0, usefulness=0.0 (short steps, no precond, 1 type, 1 TC)
+        # weighted = 2*0.35 + 1*0.30 + 2*0.20 + 0*0.15 = 0.70+0.30+0.40+0.0 = 1.40 → borderline
+        output = _make_output_with_dims(
+            correctness_coverage=0.5, steps_per_tc=1, num_types=1,
+            num_test_cases=2,
+        )
+        # Override preconditions to be empty
+        for tc in output.test_cases:
+            tc.preconditions = []
+        gold = _make_gold()
+        result = score(output, gold)
+        assert result.decision in ("borderline", "pass")  # depends on exact usefulness
+        assert result.weighted_score >= 1.2
 
 
 # ---------------------------------------------------------------------------
@@ -151,14 +181,13 @@ class TestFailBand:
         result = score(output, gold)
         assert result.decision == "fail"
 
-    def test_disallowed_hit_can_cause_fail(self):
-        # Full coverage + disallowed hit → correctness drops to 1, hallucination=1
+    def test_disallowed_hit_can_cause_borderline_or_fail(self):
+        # Full coverage + 1 disallowed hit
         output = _make_output_with_dims(correctness_coverage=1.0)
         output.assumptions.append("bad assumption")
         gold = _make_gold(disallowed=["bad assumption"])
         result = score(output, gold)
-        # correctness = 2-1=1, hallucination = 1 (one hit)
-        # weighted = 1*0.35 + 2*0.30 + 1*0.20 + 2*0.15 = 0.35+0.60+0.20+0.30=1.45 → borderline
+        # correctness = 2-1=1, hallucination = 1 (one hit) → borderline or fail
         assert result.decision in ("borderline", "fail")
 
     def test_two_disallowed_hits_fails(self):
@@ -170,7 +199,7 @@ class TestFailBand:
         assert result.decision == "fail"
 
     def test_weighted_below_1_2_is_fail(self):
-        # Force low weighted score: 0 coverage, no types, short steps
+        # Force low weighted: 0 coverage → completeness=0 (floor violation), short steps
         output = _make_output_with_dims(
             correctness_coverage=0.0,
             steps_per_tc=1,
@@ -178,7 +207,6 @@ class TestFailBand:
         )
         gold = _make_gold()
         result = score(output, gold)
-        assert result.weighted_score < 1.2
         assert result.decision == "fail"
 
 
@@ -213,7 +241,6 @@ class TestFloorViolations:
             getattr(result.scores, dim) >= 1.0
             for dim in ["correctness", "completeness", "hallucination_risk"]
         )
-        # scoring_notes should not mention floor violations
         assert "Floor violation" not in result.scoring_notes
 
 

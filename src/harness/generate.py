@@ -3,8 +3,9 @@
 Usage:
     python -m harness.generate --config configs/run_v1.yaml [--run-id run_v1_20260329T143022]
 
-Parse failures are written to {generated_dir}/{run_id}/parse_failures.jsonl so they
-are first-class run artifacts and can be counted in the manifest.
+Parse/schema failures are written to {generated_dir}/{run_id}/parse_failures.jsonl
+so they are first-class run artifacts and can be counted in the manifest.
+Transient model/API failures abort the run and do not write permanent failure markers.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ _FAILURES_FILE = "parse_failures.jsonl"
 def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
     """Generate outputs for all requirements.
 
-    Returns (generated_dir, failed_requirement_ids).
+    Returns (generated_dir, parse_failure_requirement_ids).
     run_id overrides the config's run_id when provided (used by run_eval.py
     to write outputs under a timestamped directory).
     """
@@ -50,11 +51,10 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
     requirements = _load_requirements(dataset_path)
     logger.info("Loaded %d requirements from %s", len(requirements), dataset_path)
 
-    # Fail fast if the API key is missing — no point starting the loop.
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise EnvironmentError("ANTHROPIC_API_KEY is not set")
 
-    failures: list[str] = []
+    parse_failures: list[str] = []
     for req in requirements:
         out_path = generated_dir / f"{req.requirement_id}.json"
         failure_marker = generated_dir / f"{req.requirement_id}.fail.json"
@@ -62,8 +62,11 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
             logger.info("Skipping %s (already generated)", req.requirement_id)
             continue
         if failure_marker.exists():
-            logger.info("Skipping %s (previously failed)", req.requirement_id)
-            failures.append(req.requirement_id)
+            logger.info(
+                "Skipping %s (previously failed parse/schema validation)",
+                req.requirement_id,
+            )
+            parse_failures.append(req.requirement_id)
             continue
         try:
             output = model_adapter.generate(
@@ -73,24 +76,28 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
                 prompt_version=prompt_version,
             )
             out_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
-            logger.info("Generated %s → %s", req.requirement_id, out_path)
-        except Exception as exc:
-            # Catches ValueError (parse/schema), anthropic.APIError (rate limit,
-            # network, status errors), and any other transient failure. All failures
-            # write a marker so reruns skip this requirement rather than retry blindly.
-            logger.error(
-                "Failed to generate %s (%s): %s",
-                req.requirement_id, type(exc).__name__, exc,
-            )
-            failures.append(req.requirement_id)
+            logger.info("Generated %s -> %s", req.requirement_id, out_path)
+        except ValueError as exc:
+            logger.error("Parse/schema failure for %s: %s", req.requirement_id, exc)
+            parse_failures.append(req.requirement_id)
             _write_failure_record(generated_dir, req.requirement_id, str(exc))
+        except Exception as exc:
+            logger.error(
+                "Generation aborted on %s (%s): %s",
+                req.requirement_id,
+                type(exc).__name__,
+                exc,
+            )
+            raise
 
-    if failures:
+    if parse_failures:
         logger.warning(
-            "%d failure(s): %s", len(failures), failures
+            "%d parse/schema failure(s): %s",
+            len(parse_failures),
+            parse_failures,
         )
 
-    return generated_dir, failures
+    return generated_dir, parse_failures
 
 
 def _write_failure_record(
@@ -102,10 +109,9 @@ def _write_failure_record(
         "error": error,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    # Per-file marker (allows skip-on-resume)
     marker = generated_dir / f"{requirement_id}.fail.json"
     marker.write_text(json.dumps(record, indent=2), encoding="utf-8")
-    # Append to aggregate failures log
+
     failures_log = generated_dir / _FAILURES_FILE
     with open(failures_log, "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
@@ -125,8 +131,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate model outputs")
     parser.add_argument("--config", required=True, help="Path to run config YAML")
     parser.add_argument(
-        "--run-id", dest="run_id", default=None,
-        help="Override run ID (default: uses config run_id)"
+        "--run-id",
+        dest="run_id",
+        default=None,
+        help="Override run ID (default: uses config run_id)",
     )
     args = parser.parse_args()
     _, failures = run(args.config, run_id=args.run_id)

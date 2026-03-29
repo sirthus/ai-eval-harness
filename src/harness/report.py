@@ -1,7 +1,7 @@
 """Report generation: produce CSV + markdown report from scored results.
 
 Usage:
-    python -m harness.report --config configs/run_v1.yaml
+    python -m harness.report --config configs/run_v1.yaml [--use-human-review]
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from pathlib import Path
 
 import yaml
 
-from harness.schemas import RunManifest, ScoredResult
+from harness.review_queue import load_adjudicated
+from harness.schemas import ReviewRecord, RunManifest, ScoredResult
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +24,21 @@ def write_report(
     results: list[ScoredResult],
     manifest: RunManifest,
     reports_dir: str,
+    adjudicated: dict[str, ReviewRecord] | None = None,
 ) -> tuple[Path, Path]:
-    """Write CSV and markdown report files. Returns (csv_path, md_path)."""
+    """Write CSV and markdown report files. Returns (csv_path, md_path).
+
+    If adjudicated is provided, human review decisions are shown alongside
+    auto decisions. Auto-scored data is never modified.
+    """
     out_dir = Path(reports_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = out_dir / f"{manifest.run_id}_scores.csv"
     md_path = out_dir / f"{manifest.run_id}_report.md"
 
-    _write_csv(results, csv_path)
-    _write_markdown(results, manifest, md_path)
+    _write_csv(results, csv_path, adjudicated=adjudicated)
+    _write_markdown(results, manifest, md_path, adjudicated=adjudicated)
 
     logger.info("Report written: %s", md_path)
     logger.info("Scores CSV written: %s", csv_path)
@@ -44,10 +50,14 @@ def write_report(
 # ---------------------------------------------------------------------------
 
 
-def _write_csv(results: list[ScoredResult], path: Path) -> None:
+def _write_csv(
+    results: list[ScoredResult],
+    path: Path,
+    adjudicated: dict[str, ReviewRecord] | None = None,
+) -> None:
     fieldnames = [
         "requirement_id",
-        "decision",
+        "auto_decision",
         "weighted_score",
         "correctness",
         "completeness",
@@ -56,40 +66,57 @@ def _write_csv(results: list[ScoredResult], path: Path) -> None:
         "coverage_ratio",
         "disallowed_hits",
         "scoring_notes",
+        "diagnostic_notes",
     ]
+    if adjudicated is not None:
+        fieldnames.append("human_decision")
+
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for r in sorted(results, key=lambda x: x.requirement_id):
-            writer.writerow(
-                {
-                    "requirement_id": r.requirement_id,
-                    "decision": r.decision,
-                    "weighted_score": r.weighted_score,
-                    "correctness": r.scores.correctness,
-                    "completeness": r.scores.completeness,
-                    "hallucination_risk": r.scores.hallucination_risk,
-                    "reviewer_usefulness": r.scores.reviewer_usefulness,
-                    "coverage_ratio": f"{r.coverage_ratio:.0%}",
-                    "disallowed_hits": "; ".join(r.disallowed_hits),
-                    "scoring_notes": r.scoring_notes,
-                }
-            )
+            row = {
+                "requirement_id": r.requirement_id,
+                "auto_decision": r.decision,
+                "weighted_score": r.weighted_score,
+                "correctness": r.scores.correctness,
+                "completeness": r.scores.completeness,
+                "hallucination_risk": r.scores.hallucination_risk,
+                "reviewer_usefulness": r.scores.reviewer_usefulness,
+                "coverage_ratio": f"{r.coverage_ratio:.0%}",
+                "disallowed_hits": "; ".join(r.disallowed_hits),
+                "scoring_notes": r.scoring_notes,
+                "diagnostic_notes": r.diagnostic_notes,
+            }
+            if adjudicated is not None:
+                rec = adjudicated.get(r.requirement_id) if adjudicated else None
+                row["human_decision"] = rec.review_decision if rec else ""
+            writer.writerow(row)
 
 
 # ---------------------------------------------------------------------------
-# Markdown
+# Markdown helpers
 # ---------------------------------------------------------------------------
+
+
+def _decision_counts(decisions: list[str]) -> dict[str, int]:
+    counts = {"pass": 0, "borderline": 0, "fail": 0}
+    for decision in decisions:
+        if decision in counts:
+            counts[decision] += 1
+    return counts
 
 
 def _quality_gate_recommendation(
-    results: list[ScoredResult], pass_threshold: float = 0.7
+    decisions: list[str], pass_threshold: float = 0.7
 ) -> str:
-    total = len(results)
+    total = len(decisions)
     if total == 0:
         return "No results to evaluate."
-    pass_rate = sum(1 for r in results if r.decision == "pass") / total
-    borderline_rate = sum(1 for r in results if r.decision == "borderline") / total
+
+    counts = _decision_counts(decisions)
+    pass_rate = counts["pass"] / total
+    borderline_rate = counts["borderline"] / total
 
     if pass_rate >= pass_threshold:
         return (
@@ -108,24 +135,68 @@ def _quality_gate_recommendation(
     )
 
 
+def _post_review_decisions(
+    results: list[ScoredResult],
+    adjudicated: dict[str, ReviewRecord],
+) -> dict[str, str]:
+    decisions: dict[str, str] = {}
+    for result in results:
+        final_decision = result.decision
+        if result.decision == "borderline":
+            record = adjudicated.get(result.requirement_id)
+            if record and record.review_decision in {"pass", "fail"}:
+                final_decision = record.review_decision
+        decisions[result.requirement_id] = final_decision
+    return decisions
+
+
+def _append_aggregate_table(
+    lines: list[str],
+    title: str,
+    total: int,
+    counts: dict[str, int],
+    avg_weighted: float | None = None,
+    avg_coverage: float | None = None,
+) -> None:
+    lines += [
+        title,
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+        f"| Total samples | {total} |",
+        f"| Pass | {counts['pass']} ({counts['pass'] / total:.0%}) |" if total else "| Pass | 0 |",
+        f"| Borderline | {counts['borderline']} ({counts['borderline'] / total:.0%}) |" if total else "| Borderline | 0 |",
+        f"| Fail | {counts['fail']} ({counts['fail'] / total:.0%}) |" if total else "| Fail | 0 |",
+    ]
+    if avg_weighted is not None:
+        lines.append(f"| Avg weighted score | {avg_weighted:.2f} / 2.00 |")
+    if avg_coverage is not None:
+        lines.append(f"| Avg coverage ratio | {avg_coverage:.0%} |")
+    lines.append("")
+
+
 def _write_markdown(
-    results: list[ScoredResult], manifest: RunManifest, path: Path
+    results: list[ScoredResult],
+    manifest: RunManifest,
+    path: Path,
+    adjudicated: dict[str, ReviewRecord] | None = None,
 ) -> None:
     total = len(results)
+    auto_decisions = [r.decision for r in results]
+    auto_counts = _decision_counts(auto_decisions)
     passes = [r for r in results if r.decision == "pass"]
     borderlines = [r for r in results if r.decision == "borderline"]
     fails = [r for r in results if r.decision == "fail"]
+    has_adjudications = bool(adjudicated)
 
-    avg_weighted = (
-        sum(r.weighted_score for r in results) / total if total else 0.0
-    )
-    avg_coverage = (
-        sum(r.coverage_ratio for r in results) / total if total else 0.0
-    )
+    avg_weighted = sum(r.weighted_score for r in results) / total if total else 0.0
+    avg_coverage = sum(r.coverage_ratio for r in results) / total if total else 0.0
+
+    post_review = _post_review_decisions(results, adjudicated or {})
+    post_review_counts = _decision_counts(list(post_review.values())) if has_adjudications else None
 
     lines: list[str] = []
 
-    # Header
     lines += [
         f"# Evaluation Report — {manifest.run_id}",
         "",
@@ -142,49 +213,105 @@ def _write_markdown(
         f"| Git commit | `{manifest.git_commit_hash}` |",
         f"| Config | `{manifest.config_file}` |",
         "",
-        "### Aggregate Scores",
-        "",
-        "| Metric | Value |",
-        "|---|---|",
-        f"| Total samples | {total} |",
-        f"| Pass | {len(passes)} ({len(passes)/total:.0%}) |",
-        f"| Borderline | {len(borderlines)} ({len(borderlines)/total:.0%}) |",
-        f"| Fail | {len(fails)} ({len(fails)/total:.0%}) |",
-        f"| Avg weighted score | {avg_weighted:.2f} / 2.00 |",
-        f"| Avg coverage ratio | {avg_coverage:.0%} |",
-        "",
     ]
 
-    # Quality gate
+    _append_aggregate_table(
+        lines,
+        "### Aggregate Scores (Auto)",
+        total,
+        auto_counts,
+        avg_weighted=avg_weighted,
+        avg_coverage=avg_coverage,
+    )
+
+    if has_adjudications and post_review_counts is not None:
+        _append_aggregate_table(
+            lines,
+            "### Aggregate Scores (Post-review)",
+            total,
+            post_review_counts,
+        )
+        lines += [
+            f"Adjudicated borderline items: {len(adjudicated)}",
+            "",
+        ]
+
     lines += [
         "## Quality Gate Recommendation",
         "",
-        _quality_gate_recommendation(results),
-        "",
     ]
+    if has_adjudications and post_review_counts is not None:
+        lines += [
+            "| View | Recommendation |",
+            "|---|---|",
+            f"| Auto | {_quality_gate_recommendation(auto_decisions)} |",
+            f"| Post-review | {_quality_gate_recommendation(list(post_review.values()))} |",
+            "",
+        ]
+    else:
+        lines += [
+            _quality_gate_recommendation(auto_decisions),
+            "",
+        ]
 
-    # Per-sample table
-    lines += [
-        "## Per-Sample Results",
-        "",
-        "| ID | Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes |",
-        "|---|---|---|---|---|---|---|---|---|",
-    ]
-    for r in sorted(results, key=lambda x: x.requirement_id):
-        icon = {"pass": "✓", "borderline": "~", "fail": "✗"}.get(r.decision, "?")
-        lines.append(
-            f"| {r.requirement_id} | {icon} {r.decision} "
-            f"| {r.weighted_score:.2f} "
-            f"| {r.scores.correctness:.1f} "
-            f"| {r.scores.completeness:.1f} "
-            f"| {r.scores.hallucination_risk:.1f} "
-            f"| {r.scores.reviewer_usefulness:.1f} "
-            f"| {r.coverage_ratio:.0%} "
-            f"| {r.scoring_notes or '—'} |"
-        )
+    if adjudicated is not None:
+        lines += [
+            "## Per-Sample Results",
+            "",
+            "| ID | Auto Decision | Human Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for r in sorted(results, key=lambda x: x.requirement_id):
+            icon = {"pass": "✓", "borderline": "~", "fail": "✗"}.get(r.decision, "?")
+            rec = adjudicated.get(r.requirement_id) if adjudicated else None
+            human_dec = rec.review_decision if rec else "—"
+            lines.append(
+                f"| {r.requirement_id} | {icon} {r.decision} | {human_dec} "
+                f"| {r.weighted_score:.2f} "
+                f"| {r.scores.correctness:.1f} "
+                f"| {r.scores.completeness:.1f} "
+                f"| {r.scores.hallucination_risk:.1f} "
+                f"| {r.scores.reviewer_usefulness:.1f} "
+                f"| {r.coverage_ratio:.0%} "
+                f"| {r.scoring_notes or '—'} "
+                f"| {r.diagnostic_notes or '—'} |"
+            )
+    else:
+        lines += [
+            "## Per-Sample Results",
+            "",
+            "| ID | Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for r in sorted(results, key=lambda x: x.requirement_id):
+            icon = {"pass": "✓", "borderline": "~", "fail": "✗"}.get(r.decision, "?")
+            lines.append(
+                f"| {r.requirement_id} | {icon} {r.decision} "
+                f"| {r.weighted_score:.2f} "
+                f"| {r.scores.correctness:.1f} "
+                f"| {r.scores.completeness:.1f} "
+                f"| {r.scores.hallucination_risk:.1f} "
+                f"| {r.scores.reviewer_usefulness:.1f} "
+                f"| {r.coverage_ratio:.0%} "
+                f"| {r.scoring_notes or '—'} "
+                f"| {r.diagnostic_notes or '—'} |"
+            )
     lines.append("")
 
-    # Failure analysis
+    if has_adjudications:
+        lines += ["## Human Review Summary", ""]
+        noted_records = [
+            (req_id, rec)
+            for req_id, rec in sorted((adjudicated or {}).items())
+            if rec.reviewer_notes
+        ]
+        if noted_records:
+            for req_id, rec in noted_records:
+                lines.append(f"- **{req_id}** ({rec.review_decision}): {rec.reviewer_notes}")
+        else:
+            lines.append("Adjudications were recorded, but no reviewer notes were captured.")
+        lines.append("")
+
     problem_results = borderlines + fails
     lines += ["## Failure Analysis", ""]
     if not problem_results:
@@ -211,10 +338,7 @@ def _write_markdown(
                 lines.append(f"- `{phrase}` — {count} occurrence(s)")
             lines.append("")
 
-        lines += [
-            "**Borderline samples (routed to human review queue):**",
-            "",
-        ]
+        lines += ["**Borderline samples (auto-routed to human review queue):**", ""]
         for r in borderlines:
             lines.append(
                 f"- {r.requirement_id}: weighted={r.weighted_score:.2f}, "
@@ -231,13 +355,12 @@ def _write_markdown(
                 )
             lines.append("")
 
-    # Limitations
     lines += [
         "## Known Limitations",
         "",
         "- Gold coverage scoring uses keyword/phrase matching — semantic equivalence is not detected.",
         "- Hallucination risk scoring is heuristic-based; human review of borderline cases is required.",
-        "- Gold dataset (10 requirements) is narrow; domain coverage is limited to TaskFlow SaaS scenarios.",
+        "- Correctness scoring is a proxy (disallowed hits + minimum TC count) not a semantic judge.",
         "- Reviewer usefulness scoring uses structural proxies, not semantic judgment.",
         "",
     ]
@@ -256,6 +379,10 @@ def main() -> None:
         "--run-id", dest="run_id", default=None,
         help="Run ID to report on (default: uses config run_id)",
     )
+    parser.add_argument(
+        "--use-human-review", action="store_true", default=False,
+        help="Merge adjudicated human review decisions into the report",
+    )
     args = parser.parse_args()
 
     from harness.evaluate import scored_results_path
@@ -273,7 +400,6 @@ def main() -> None:
     raw = json.loads(results_path.read_text(encoding="utf-8"))
     results = [ScoredResult.model_validate(r) for r in raw]
 
-    # Load manifest from runs dir
     run_id = args.run_id or cfg["run_id"]
     manifest_path = Path(cfg["runs_dir"]) / f"{run_id}.json"
     if not manifest_path.exists():
@@ -284,7 +410,17 @@ def main() -> None:
     manifest = RunManifest.model_validate(
         json.loads(manifest_path.read_text(encoding="utf-8"))
     )
-    write_report(results, manifest, cfg["reports_dir"])
+
+    adjudicated = None
+    if args.use_human_review:
+        adjudicated = load_adjudicated(run_id, cfg["reviews_dir"])
+        if not adjudicated:
+            logger.warning(
+                "--use-human-review specified but no adjudicated records found for %s",
+                run_id,
+            )
+
+    write_report(results, manifest, cfg["reports_dir"], adjudicated=adjudicated)
 
 
 if __name__ == "__main__":

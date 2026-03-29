@@ -70,6 +70,7 @@ class ScoredResult(BaseModel):
     coverage_ratio: float
     disallowed_hits: list[str] = Field(default_factory=list)
     scoring_notes: str = ""
+    diagnostic_notes: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +92,10 @@ class RunManifest(BaseModel):
     total_requirements: int = 0
     parse_failures: int = 0
     total_evaluated: int = 0
+    pass_count: int = 0
+    borderline_count: int = 0
+    fail_count: int = 0
+    avg_weighted_score: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -105,4 +110,32 @@ class ReviewRecord(BaseModel):
     scores: DimensionScores
     review_decision: Literal["pending", "pass", "fail", "escalate"] = "pending"
     reviewer_notes: str = ""
+    reviewed_at: str | None = None
     final_scores: DimensionScores | None = None
+
+
+# ---------------------------------------------------------------------------
+# Trend schemas
+# ---------------------------------------------------------------------------
+
+
+class RunSummary(BaseModel):
+    run_id: str
+    timestamp: str
+    model_version: str
+    prompt_version: str
+    dataset_version: str
+    pass_count: int
+    borderline_count: int
+    fail_count: int
+    total_evaluated: int
+    parse_failures: int
+    avg_weighted_score: float
+
+
+class TrendReport(BaseModel):
+    generated_at: str
+    runs: list[RunSummary]
+    per_requirement_history: dict[str, list[dict]]  # req_id → [{run_id, decision, weighted_score}]
+    consistently_borderline: list[str]              # req_ids borderline in >50% of runs
+    domain_pass_rates: dict[str, dict[str, float]]  # domain → {run_id → pass_rate}

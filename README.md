@@ -1,26 +1,27 @@
 # AI QA Evaluation Harness
 
-A Python evaluation harness for AI-generated QA test cases. Given a requirement snippet, an LLM generates structured JSON test cases; this system scores that output against a gold dataset across four dimensions, routes borderline cases to human review, and produces versioned markdown reports for model and prompt comparison.
+A Python evaluation harness for AI-generated QA test cases. Given a requirement snippet, an LLM generates structured JSON test cases; the harness validates that output, scores it against a gold dataset, routes borderline cases to human review, and produces reports for per-run analysis, side-by-side prompt comparison, and multi-run trends.
 
 ---
 
-## The Problem
+## What This Repo Does
 
-LLMs can generate test cases from requirements, but their output is variable. Some outputs are excellent; others miss critical coverage points, invent unsupported behaviors, or produce vague steps a reviewer cannot use. You cannot trust LLM-generated QA artifacts without measurement.
+The current repo supports two evaluation tracks:
 
-This project answers: **Is this model/prompt combination reliable enough to assist QA test design, and where does it still require human review?**
+| Track | Dataset | Gold | Prompt(s) | Purpose |
+|---|---|---|---|---|
+| Phase 1 baseline | `mvp_dataset.jsonl` (10 requirements) | `gold_test_cases.jsonl` | `v1` | Small baseline run |
+| Phase 2 current workflow | `mvp_dataset_v2.jsonl` (40 requirements) | `gold_test_cases_v2.jsonl` | `v1`, `v2` | Prompt comparison, human review, trend analysis |
 
----
+A full run:
 
-## MVP
+1. Loads requirements from JSONL
+2. Prompts Claude for structured JSON test cases
+3. Validates the response against the schema
+4. Scores the output across four dimensions
+5. Writes generated outputs, scored results, a review queue, a run manifest, and a report
 
-Given a requirement snippet, the harness:
-
-1. Sends it to an LLM (Claude) with a structured prompt
-2. Validates the response as JSON matching a defined test case schema
-3. Scores the output against a gold dataset across four dimensions
-4. Routes borderline outputs to a human review queue
-5. Produces a scored markdown report with a quality gate recommendation
+`run_eval.py` creates timestamped run IDs such as `run_v2_prompt_v2_20260329T143022Z`, so each invocation writes to an isolated output directory.
 
 ---
 
@@ -30,34 +31,56 @@ Given a requirement snippet, the harness:
 
 | Dimension | Weight | What it measures |
 |---|---|---|
-| Correctness | 0.35 | Are the test cases materially correct and on-target? |
-| Completeness | 0.30 | Are all required coverage points addressed? |
-| Hallucination risk | 0.20 | Does the output invent unsupported behaviors or assumptions? |
-| Reviewer usefulness | 0.15 | Are the test cases clear, specific, and time-saving? |
+| Correctness | 0.35 | Are the generated test cases materially correct relative to the requirement? Phase 2 uses a structural proxy: disallowed hits plus minimum test-case count. |
+| Completeness | 0.30 | Are required coverage points addressed? |
+| Hallucination risk | 0.20 | Does the output invent unsupported behavior or assumptions? |
+| Reviewer usefulness | 0.15 | Are the test cases clear, concrete, and reviewable? |
 
 ### Decision bands
 
 | Band | Condition |
 |---|---|
-| **Pass** | Weighted average ≥ 1.6 AND correctness, completeness, hallucination_risk each ≥ 1 |
-| **Borderline** | Weighted 1.2–1.59 → routed to human review queue |
-| **Fail** | Weighted < 1.2, or any floor dimension < 1 |
+| **Pass** | Weighted average ≥ 1.6 and all floor dimensions meet threshold |
+| **Borderline** | Weighted average 1.2–1.59 and floor dimensions met |
+| **Fail** | Weighted average < 1.2, or any floor dimension below threshold |
+
+A floor violation always fails, even if the weighted average is otherwise high.
 
 ### Gold dataset philosophy
 
-Each requirement defines required coverage points, acceptable variant phrases, and disallowed assumptions — not a single correct answer. Scoring matches coverage by keyword/phrase presence, not exact string matching.
+Each requirement defines:
+
+- `required_coverage_points`
+- `acceptable_variants`
+- `disallowed_assumptions`
+- optional `review_notes`
+- optional example `gold_test_cases`
+
+Coverage is phrase-based, not semantic reasoning. `acceptable_variants` are keyed to specific coverage points, so a synonym only credits the point it belongs to.
 
 ---
 
-## Why This Matters
+## Human Review Semantics
 
-This repo demonstrates:
+Auto-scored artifacts are canonical and immutable:
 
-- **Reproducibility**: every run records model, prompt, dataset, scoring, threshold, git commit, and timestamp
-- **Measurement over hype**: outputs are scored against a rubric with explicit pass/fail criteria
-- **Controlled experiments**: versioned prompts and model IDs make comparisons traceable
-- **Human-in-the-loop**: borderline cases are routed to review rather than auto-decided
-- **Failure analysis**: reports surface common coverage gaps and hallucinated assumptions
+- `data/generated/{run_id}/scored_results.json`
+- `data/runs/{run_id}.json`
+
+Human review is a separate overlay built from:
+
+- `data/reviews/{run_id}/queue.jsonl`
+- `data/reviews/{run_id}/adjudicated.jsonl`
+
+When `--use-human-review` is enabled:
+
+- `report.py` keeps auto decisions visible and adds a post-review aggregate plus post-review quality-gate view for adjudicated borderline items only
+- `compare_report.py` shows human decisions alongside auto decisions when adjudications exist
+- `trend_report.py` stays auto-based for pass rates, consistency, borderline detection, and domain trends; human review is added as markdown annotations and an optional `human_decision` CSV column
+
+Only parse/schema validation failures create persistent `{requirement_id}.fail.json` markers and append to `parse_failures.jsonl`. Transient model/API failures abort generation so incomplete runs are not silently treated as valid evaluation artifacts.
+
+See [docs/review_workflow.md](docs/review_workflow.md) for the full review workflow.
 
 ---
 
@@ -70,88 +93,169 @@ pip install -e ".[dev]"
 export ANTHROPIC_API_KEY=your_key_here
 ```
 
-### Full evaluation pipeline
+### Phase 2 prompt comparison
+
+```bash
+python -m harness.run_eval --config configs/run_v2_prompt_v1.yaml
+python -m harness.run_eval --config configs/run_v2_prompt_v2.yaml
+```
+
+### Review borderline cases from one run
+
+```bash
+python -m harness.review_cli --run-id run_v2_prompt_v2_TIMESTAMP
+```
+
+Optional review CLI flags:
+
+- `--gold-path` to point directly at a gold file
+- `--runs-dir` if manifests are stored outside `data/runs`
+
+### Generate a per-run report
+
+```bash
+python -m harness.report \
+    --config configs/run_v2_prompt_v2.yaml \
+    --run-id run_v2_prompt_v2_TIMESTAMP
+```
+
+### Generate a per-run report with human review overlay
+
+```bash
+python -m harness.report \
+    --config configs/run_v2_prompt_v2.yaml \
+    --run-id run_v2_prompt_v2_TIMESTAMP \
+    --use-human-review
+```
+
+### Compare two runs
+
+```bash
+python -m harness.compare_report \
+    --run-a run_v2_prompt_v1_TIMESTAMP \
+    --run-b run_v2_prompt_v2_TIMESTAMP \
+    --dataset-path data/requirements/mvp_dataset_v2.jsonl
+```
+
+### Compare two runs with human decisions shown
+
+```bash
+python -m harness.compare_report \
+    --run-a run_v2_prompt_v1_TIMESTAMP \
+    --run-b run_v2_prompt_v2_TIMESTAMP \
+    --dataset-path data/requirements/mvp_dataset_v2.jsonl \
+    --use-human-review
+```
+
+### Trend report across multiple runs
+
+```bash
+python -m harness.trend_report \
+    --dataset-path data/requirements/mvp_dataset_v2.jsonl
+```
+
+### Trend report with human-review annotations
+
+```bash
+python -m harness.trend_report \
+    --dataset-path data/requirements/mvp_dataset_v2.jsonl \
+    --use-human-review
+```
+
+### Phase 1 baseline
 
 ```bash
 python -m harness.run_eval --config configs/run_v1.yaml
 ```
 
-This runs all steps in sequence: generate → evaluate → review queue → report → manifest.
-
-### Individual steps (development)
+### Individual development steps
 
 ```bash
-python -m harness.generate --config configs/run_v1.yaml
-python -m harness.evaluate --config configs/run_v1.yaml
-```
-
-### Tests
-
-```bash
-pytest
+python -m harness.generate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
+python -m harness.evaluate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
 ```
 
 ---
 
-## Sample Report Output
+## Output Artifacts
 
-```
-## Run Summary
+A typical full run writes:
 
-| Field     | Value                        |
-|-----------|------------------------------|
-| Run ID    | run_v1                       |
-| Model     | claude-3-5-sonnet-20241022   |
-| Prompt    | v1                           |
-| Dataset   | mvp_v1 (10 requirements)     |
+- `data/generated/{run_id}/REQ-*.json` for successful model outputs
+- `data/generated/{run_id}/{requirement_id}.fail.json` for parse/schema failures
+- `data/generated/{run_id}/parse_failures.jsonl` for aggregated parse/schema failure records
+- `data/generated/{run_id}/scored_results.json` for scored samples
+- `data/reviews/{run_id}/queue.jsonl` for borderline items
+- `data/reviews/{run_id}/adjudicated.jsonl` for completed human decisions
+- `data/runs/{run_id}.json` for the run manifest
+- `reports/{run_id}_scores.csv` and `reports/{run_id}_report.md` for per-run reporting
+- timestamped comparison and trend reports under `reports/`
 
-### Aggregate Scores
+---
 
-| Metric             | Value  |
-|--------------------|--------|
-| Pass               | 6 (60%) |
-| Borderline         | 3 (30%) |
-| Fail               | 1 (10%) |
-| Avg weighted score | 1.58 / 2.00 |
+## Tests
 
-## Quality Gate Recommendation
-
-Recommended for assisted internal use with reviewer oversight. Pass rate: 60%.
-Borderline rate (30%) requires human review before production use.
+```bash
+pytest                            # all tests (no API key needed)
+pytest tests/test_scoring.py
+pytest tests/test_scoring_v2.py
+pytest tests/test_review_cli.py
+pytest tests/test_compare_report.py
+pytest tests/test_trend_report.py
+pytest tests/test_generate_followups.py
+pytest tests/test_report_followups.py
+pytest tests/test_trend_followups.py
+pytest tests/test_integration.py
 ```
 
 ---
 
-## Project Structure
+## Repository Map
 
-```
+```text
 src/harness/
-  run_eval.py        orchestrates full pipeline
-  generate.py        calls model API, writes generated/ output
-  evaluate.py        scores generated output against gold
-  score.py           scoring logic (4 dimensions, weights, thresholds)
-  report.py          produces CSV + markdown report
-  review_queue.py    routes borderline samples to data/reviews/
-  schemas.py         pydantic models for requirements and LLM output
-  model_adapter.py   abstraction over Anthropic API
-  prompts/v1.txt     first prompt version
+  run_eval.py         orchestrates full pipeline
+  generate.py         calls the model and writes generated outputs
+  evaluate.py         scores generated output against gold
+  score.py            scoring logic, thresholds, diagnostics
+  report.py           per-run CSV + markdown reporting
+  review_queue.py     review queue persistence
+  review_cli.py       interactive adjudication tool
+  compare_report.py   side-by-side run comparison
+  trend_report.py     multi-run trend reporting
+  schemas.py          pydantic models for datasets and artifacts
+  model_adapter.py    Anthropic adapter
+  prompts/
+    v1.txt            Phase 1 prompt
+    v2.txt            Phase 2 prompt
 
-data/requirements/   input requirement snippets (JSONL, committed)
-data/gold/           gold annotations (JSONL, committed)
-data/generated/      raw model outputs per run (gitignored)
-data/runs/           run manifests (gitignored)
-data/reviews/        borderline review records (gitignored)
-reports/             markdown + CSV reports (gitignored)
-configs/             YAML run configs
-tests/               pytest tests for scoring, parsing, thresholds
+data/
+  requirements/
+    mvp_dataset.jsonl
+    mvp_dataset_v2.jsonl
+  gold/
+    gold_test_cases.jsonl
+    gold_test_cases_v2.jsonl
+  generated/
+  runs/
+  reviews/
+
+configs/
+  run_v1.yaml
+  run_v2_prompt_v1.yaml
+  run_v2_prompt_v2.yaml
+
+docs/
+  dataset_design.md
+  review_workflow.md
 ```
 
 ---
 
 ## Known Limitations
 
-- **Keyword-based coverage scoring**: semantic equivalence is not detected. A test case that covers a point in different words may not be credited unless included in `acceptable_variants`.
-- **Heuristic hallucination scoring**: the scorer checks for disallowed assumption phrases and large assumption lists. It cannot detect subtle invented behaviors.
-- **Narrow dataset**: Phase 1 uses 10 requirement snippets from a single fictional SaaS domain (TaskFlow). Coverage of edge domains and real-world requirement styles is limited.
-- **Gold subjectivity**: coverage points and disallowed assumptions reflect one annotator's judgment. Different annotators may disagree.
-- **Phase 1 scope**: no UI, no RAG, no vector DBs, no dashboards. This is intentionally a small, serious evaluation system.
+- Coverage scoring is phrase-based. Semantic equivalence is not detected unless it is represented in `acceptable_variants`.
+- Correctness is still a heuristic proxy, not a semantic judge of whether a test case is truly valid.
+- Hallucination scoring is heuristic and best used together with human review of borderline results.
+- Human adjudication changes reporting overlays, not the underlying auto-scored artifacts.
+- This repo is intentionally narrow: no UI, no dashboards, no RAG, no autonomous agent workflows.

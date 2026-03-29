@@ -55,3 +55,45 @@ def load_queue(queue_path: Path) -> list[ReviewRecord]:
             if line:
                 records.append(ReviewRecord.model_validate(json.loads(line)))
     return records
+
+
+def write_adjudicated(
+    records: list[ReviewRecord],
+    run_id: str,
+    reviews_dir: str,
+) -> Path:
+    """Write adjudicated (non-pending) records to adjudicated.jsonl.
+
+    Only records where review_decision != 'pending' are written.
+    Returns the path to the adjudicated file.
+    """
+    decided = [r for r in records if r.review_decision != "pending"]
+    adj_dir = Path(reviews_dir) / run_id
+    adj_dir.mkdir(parents=True, exist_ok=True)
+    adj_path = adj_dir / "adjudicated.jsonl"
+
+    with open(adj_path, "w", encoding="utf-8") as f:
+        for record in decided:
+            f.write(record.model_dump_json() + "\n")
+
+    logger.info(
+        "Wrote %d adjudicated record(s) to %s",
+        len(decided),
+        adj_path,
+    )
+    return adj_path
+
+
+def load_adjudicated(run_id: str, reviews_dir: str) -> dict[str, "ReviewRecord"]:
+    """Load adjudicated records for a run. Returns a dict keyed by requirement_id."""
+    adj_path = Path(reviews_dir) / run_id / "adjudicated.jsonl"
+    if not adj_path.exists():
+        return {}
+    records: dict[str, ReviewRecord] = {}
+    with open(adj_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rec = ReviewRecord.model_validate(json.loads(line))
+                records[rec.requirement_id] = rec
+    return records

@@ -98,6 +98,11 @@ def run(config_path: str) -> None:
     with open(cfg["dataset_path"], encoding="utf-8") as f:
         total_requirements = sum(1 for line in f if line.strip())
 
+    passes = sum(1 for r in results if r.decision == "pass")
+    borderlines = sum(1 for r in results if r.decision == "borderline")
+    fails = sum(1 for r in results if r.decision == "fail")
+    avg_score = sum(r.weighted_score for r in results) / len(results) if results else 0.0
+
     manifest = RunManifest(
         run_id=run_id,
         model_name=cfg["model_name"],
@@ -112,6 +117,10 @@ def run(config_path: str) -> None:
         total_requirements=total_requirements,
         parse_failures=len(parse_failure_ids),
         total_evaluated=len(results),
+        pass_count=passes,
+        borderline_count=borderlines,
+        fail_count=fails,
+        avg_weighted_score=round(avg_score, 4),
     )
     report.write_report(results, manifest, cfg["reports_dir"])
 
@@ -123,11 +132,6 @@ def run(config_path: str) -> None:
     logger.info("Run manifest saved: %s", manifest_path)
 
     # Summary
-    passes = sum(1 for r in results if r.decision == "pass")
-    borderlines = sum(1 for r in results if r.decision == "borderline")
-    fails = sum(1 for r in results if r.decision == "fail")
-    avg_score = sum(r.weighted_score for r in results) / len(results) if results else 0.0
-
     logger.info("=== Run complete: %s ===", run_id)
     logger.info(
         "Results: %d/%d evaluated | %d pass / %d borderline / %d fail | %d parse failure(s) | avg score %.2f",

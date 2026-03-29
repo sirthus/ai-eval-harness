@@ -224,24 +224,36 @@ class TestScoreCompleteness:
 
 
 class TestScoreCorrectness:
-    def test_high_coverage_no_hits(self):
-        assert score_correctness(0.80, []) == 2.0
+    def test_two_tc_no_hits(self):
+        output = make_output(test_cases=[make_test_case(), make_test_case(title="Failure case")])
+        assert score_correctness(output, []) == 2.0
+
+    def test_single_tc_penalty(self):
+        # 1 test case → -0.5 penalty → 1.5
+        output = make_output(test_cases=[make_test_case()])
+        assert score_correctness(output, []) == 1.5
 
     def test_penalty_for_disallowed_hit(self):
-        # Base=2.0, penalty=1 → 1.0
-        assert score_correctness(0.80, ["bad assumption"]) == 1.0
+        # 2 TCs, 1 hit → 2.0 - 1.0 = 1.0
+        output = make_output(test_cases=[make_test_case(), make_test_case(title="Negative")])
+        assert score_correctness(output, ["bad assumption"]) == 1.0
 
     def test_two_hits_zeroes_out(self):
-        assert score_correctness(0.80, ["bad", "worse"]) == 0.0
+        output = make_output(test_cases=[make_test_case(), make_test_case(title="Negative")])
+        assert score_correctness(output, ["bad", "worse"]) == 0.0
 
     def test_penalty_capped_at_two(self):
         # Three hits should not go below 0
-        result = score_correctness(0.80, ["a", "b", "c"])
+        output = make_output(test_cases=[make_test_case(), make_test_case(title="Negative")])
+        result = score_correctness(output, ["a", "b", "c"])
         assert result == 0.0
 
-    def test_medium_base_with_one_hit(self):
-        # Base=1.0 (ratio 0.5–0.74), penalty=1 → 0.0
-        assert score_correctness(0.60, ["bad"]) == 0.0
+    def test_correctness_independent_of_coverage_ratio(self):
+        # Score depends on output content and hits, NOT on coverage ratio
+        output_a = make_output(test_cases=[make_test_case(), make_test_case(title="Negative")])
+        output_b = make_output(test_cases=[make_test_case(), make_test_case(title="Negative")])
+        # Both should score the same regardless of what coverage ratio would be
+        assert score_correctness(output_a, []) == score_correctness(output_b, [])
 
 
 # ---------------------------------------------------------------------------

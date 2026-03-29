@@ -1,0 +1,28 @@
+run_id: run_v2_prompt_v1
+model_name: claude
+model_version: claude-3-5-sonnet-20241022
+prompt_version: v1
+dataset_version: mvp_v2
+dataset_path: data/requirements/mvp_dataset_v2.jsonl
+gold_path: data/gold/gold_test_cases_v2.jsonl
+generated_dir: data/generated
+runs_dir: data/runs
+reviews_dir: data/reviews
+reports_dir: reports
+scoring_version: v2
+threshold_version: v2
+thresholds:
+  pass: 1.6
+  borderline_low: 1.2
+  weights:
+    correctness: 0.35
+    completeness: 0.30
+    hallucination_risk: 0.20
+    reviewer_usefulness: 0.15
+  floor:
+    correctness: 1.0
+    completeness: 1.0
+    hallucination_risk: 1.0
+diagnostics:
+  flag_long_expected_result: true
+  flag_low_step_verbosity: true

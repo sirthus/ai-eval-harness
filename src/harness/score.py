@@ -39,6 +39,10 @@ _DEFAULT_THRESHOLDS = {
         "hallucination_risk": 1.0,
     },
 }
+_DEFAULT_DIAGNOSTICS: dict[str, bool] = {
+    "flag_long_expected_result": False,
+    "flag_low_step_verbosity": False,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -121,11 +125,18 @@ def score_completeness(ratio: float) -> float:
     return 0.0
 
 
-def score_correctness(ratio: float, hits: list[str]) -> float:
-    """Completeness-based with penalty for disallowed assumptions."""
-    base = score_completeness(ratio)
-    penalty = min(len(hits), 2)  # cap penalty at 2
-    return max(0.0, base - penalty)
+def score_correctness(output: ModelOutput, hits: list[str]) -> float:
+    """Measures validity of generated content relative to gold guidance.
+
+    Proxy: penalizes disallowed assumptions and outputs too thin to cover
+    both positive and negative cases.
+    Does NOT measure coverage breadth — that is completeness.
+    """
+    score = 2.0
+    score -= min(len(hits), 2)        # 1.0 per disallowed hit, capped at 2 deductions
+    if len(output.test_cases) < 2:
+        score -= 0.5                   # can't cover +/- with a single test case
+    return max(0.0, score)
 
 
 def score_hallucination_risk(output: ModelOutput, hits: list[str]) -> float:
@@ -161,11 +172,51 @@ def score_reviewer_usefulness(output: ModelOutput) -> float:
         if len(types_used) >= 2:
             signals += 1
 
+        # Safe Phase 2 heuristics: low false-penalty risk
+        titles = [tc.title for tc in output.test_cases]
+        if len(titles) != len(set(titles)):
+            signals -= 1  # duplicate titles penalised
+
+        if len(output.test_cases) == 1:
+            signals -= 1  # single test case cannot cover +/-
+
     if signals >= 3:
         return 2.0
     if signals >= 2:
         return 1.0
     return 0.0
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic signals
+# ---------------------------------------------------------------------------
+
+
+def _compute_diagnostics(
+    output: ModelOutput,
+    cfg: dict[str, bool],
+) -> str:
+    """Compute diagnostic notes (not scoring inputs). Returns a string."""
+    notes: list[str] = []
+
+    if cfg.get("flag_long_expected_result"):
+        for tc in output.test_cases:
+            word_count = len(tc.expected_result.split())
+            if word_count > 15:
+                notes.append(
+                    f"[diag] Long expected_result in '{tc.title}' ({word_count} words)"
+                )
+
+    if cfg.get("flag_low_step_verbosity"):
+        for tc in output.test_cases:
+            if tc.steps:
+                avg_words = sum(len(s.split()) for s in tc.steps) / len(tc.steps)
+                if avg_words < 5:
+                    notes.append(
+                        f"[diag] Low step verbosity in '{tc.title}' ({avg_words:.1f} words/step)"
+                    )
+
+    return "; ".join(notes)
 
 
 # ---------------------------------------------------------------------------
@@ -178,15 +229,17 @@ def score(
     gold: GoldAnnotation,
     weights: dict[str, float] | None = None,
     thresholds: dict[str, Any] | None = None,
+    diagnostics: dict[str, bool] | None = None,
 ) -> ScoredResult:
     w = weights or _DEFAULT_WEIGHTS
     t = thresholds or _DEFAULT_THRESHOLDS
+    diag_cfg = diagnostics or _DEFAULT_DIAGNOSTICS
 
     ratio = _coverage_ratio(output, gold)
     hits = _disallowed_hits(output, gold)
 
     completeness = score_completeness(ratio)
-    correctness = score_correctness(ratio, hits)
+    correctness = score_correctness(output, hits)
     hallucination_risk = score_hallucination_risk(output, hits)
     reviewer_usefulness = score_reviewer_usefulness(output)
 
@@ -212,7 +265,6 @@ def score(
     ]
 
     if floor_violations:
-        # Any floor violation is an unconditional fail regardless of weighted score.
         decision = "fail"
         notes = f"Floor violation(s): {', '.join(floor_violations)}"
     elif weighted >= t["pass"]:
@@ -229,6 +281,8 @@ def score(
         hit_note = f"Disallowed assumption(s) found: {hits}"
         notes = f"{notes}; {hit_note}".strip("; ")
 
+    diagnostic_notes = _compute_diagnostics(output, diag_cfg)
+
     return ScoredResult(
         requirement_id=output.requirement_id,
         scores=dims,
@@ -237,4 +291,5 @@ def score(
         coverage_ratio=round(ratio, 4),
         disallowed_hits=hits,
         scoring_notes=notes,
+        diagnostic_notes=diagnostic_notes,
     )
