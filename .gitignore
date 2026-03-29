@@ -11,6 +11,9 @@ reports/
 # Claude Code — machine-specific local overrides
 .claude/settings.local.json
 
+# AI tool instruction files (machine-generated, duplicates CLAUDE.md)
+AGENTS.md
+
 # Python
 .venv/
 __pycache__/
