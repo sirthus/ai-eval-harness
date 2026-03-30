@@ -34,6 +34,29 @@ logger = logging.getLogger(__name__)
 _TIMESTAMP_SUFFIX_RE = re.compile(r"_\d{8}T\d{6}Z$")
 
 
+def _quality_gate_label(decision: str) -> str:
+    labels = {
+        "pass": "✓ Recommended",
+        "needs_review": "~ Needs review",
+        "fail": "✗ Not recommended",
+    }
+    return labels.get(decision, "~ Needs review")
+
+
+def _inject_chart_markdown(md_content: str, chart_lines: list[str], marker: str) -> str:
+    """Insert chart markdown before marker, or append a fallback section."""
+    if not chart_lines:
+        return md_content
+
+    chart_block = "\n".join(["## Charts", "", *chart_lines, ""])
+    marker_index = md_content.find(marker)
+    if marker_index == -1:
+        logger.warning("Chart injection marker '%s' not found; appending charts to report end", marker)
+        trimmed = md_content.rstrip()
+        return f"{trimmed}\n\n{chart_block}"
+    return md_content[:marker_index] + chart_block + md_content[marker_index:]
+
+
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
@@ -146,6 +169,7 @@ def build_trend_data(
             model_version=m.model_version,
             prompt_version=m.prompt_version,
             dataset_version=m.dataset_version,
+            quality_gate_decision=m.quality_gate_decision,
             pass_count=m.pass_count,
             borderline_count=m.borderline_count,
             fail_count=m.fail_count,
@@ -338,7 +362,7 @@ def render_trend_markdown(
     for r in sorted(trend.runs, key=lambda x: x.timestamp):
         total = r.total_evaluated
         pass_pct = r.pass_count / total if total else 0.0
-        gate = "✓ Recommended" if pass_pct >= 0.7 else ("~ Promising" if pass_pct >= 0.5 else "✗ Not recommended")
+        gate = _quality_gate_label(r.quality_gate_decision)
         lines.append(f"| `{r.run_id}` | {pass_pct:.0%} | {gate} |")
     lines.append("")
 
@@ -359,6 +383,7 @@ def run(
     filter_dataset: str | None = None,
     filter_prompt: str | None = None,
     use_human_review: bool = False,
+    charts: bool = False,
 ) -> tuple[Path, Path]:
     """Build and write trend report. Returns (md_path, csv_path)."""
     manifests = _load_all_manifests(runs_dir)
@@ -390,6 +415,30 @@ def run(
     out_dir = Path(reports_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    chart_lines: list[str] = []
+    if charts and trend.runs:
+        from harness import charts as chart_module
+        trend_data_for_chart = [
+            {
+                "run_id": r.run_id,
+                "pass_rate": r.pass_count / r.total_evaluated if r.total_evaluated else 0.0,
+                "borderline_rate": r.borderline_count / r.total_evaluated if r.total_evaluated else 0.0,
+            }
+            for r in sorted(trend.runs, key=lambda x: x.timestamp)
+        ]
+        pass_rate_path = chart_module.plot_trend_pass_rate(trend_data_for_chart, out_dir, timestamp=timestamp)
+        if pass_rate_path:
+            chart_lines.append(f"![Pass Rate Over Time]({pass_rate_path.name})")
+
+        run_ids = [r.run_id for r in trend.runs]
+        heatmap_path = chart_module.plot_domain_heatmap(trend.domain_pass_rates, run_ids, out_dir, timestamp=timestamp)
+        if heatmap_path:
+            chart_lines.append(f"![Domain Pass Rates]({heatmap_path.name})")
+
+    if chart_lines:
+        md_content = _inject_chart_markdown(md_content, chart_lines, "## Runs Included")
+
     md_path = out_dir / f"trend_{timestamp}.md"
     md_path.write_text(md_content, encoding="utf-8")
     logger.info("Trend report written: %s", md_path)
@@ -439,6 +488,8 @@ def main() -> None:
     )
     parser.add_argument("--filter-prompt", default=None, help="Filter by prompt version")
     parser.add_argument("--use-human-review", action="store_true", default=False)
+    parser.add_argument("--charts", action="store_true", default=False,
+                        help="Generate PNG charts (requires matplotlib extra)")
     args = parser.parse_args()
     run(
         dataset_path=args.dataset_path,
@@ -449,6 +500,7 @@ def main() -> None:
         filter_dataset=args.filter_dataset,
         filter_prompt=args.filter_prompt,
         use_human_review=args.use_human_review,
+        charts=args.charts,
     )
 
 

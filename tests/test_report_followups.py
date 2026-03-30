@@ -61,6 +61,7 @@ def _manifest(run_id: str = "run_case") -> RunManifest:
         borderline_count=2,
         fail_count=1,
         avg_weighted_score=1.35,
+        quality_gate_decision="needs_review",
     )
 
 
@@ -118,6 +119,32 @@ class TestReportHumanReviewOverlay:
         assert "| Borderline | 1 (50%) |" in post_review
         assert "| Fail | 0 (0%) |" in post_review
 
+    def test_quality_gate_uses_persisted_manifest_gate_for_auto_view(self, tmp_path):
+        results = [
+            _result("REQ-001", "pass"),
+            _result("REQ-002", "pass"),
+            _result("REQ-003", "borderline"),
+            _result("REQ-004", "borderline"),
+        ]
+        manifest = _manifest()
+        manifest.pass_count = 2
+        manifest.borderline_count = 2
+        manifest.fail_count = 0
+        manifest.parse_failures = 1
+        manifest.quality_gate_decision = "fail"
+
+        _, md_path = write_report(results, manifest, str(tmp_path))
+        quality_gate = _section(
+            md_path.read_text(encoding="utf-8"),
+            "## Quality Gate Recommendation",
+            "## Per-Sample Results",
+        )
+
+        assert "Auto gate: ✗ Not recommended" in quality_gate
+        assert "persisted manifest gate" in quality_gate
+        assert "parse failures 1" in quality_gate
+        assert "Recommended for assisted internal use" not in quality_gate
+
     def test_quality_gate_shows_auto_and_post_review_recommendations(self, tmp_path):
         results = [
             _result("REQ-001", "pass"),
@@ -133,6 +160,7 @@ class TestReportHumanReviewOverlay:
         manifest.pass_count = 2
         manifest.borderline_count = 2
         manifest.fail_count = 0
+        manifest.quality_gate_decision = "needs_review"
 
         _, md_path = write_report(results, manifest, str(tmp_path), adjudicated=adjudicated)
         quality_gate = _section(
@@ -141,7 +169,7 @@ class TestReportHumanReviewOverlay:
             "## Per-Sample Results",
         )
 
-        assert "| Auto |" in quality_gate
-        assert "| Post-review |" in quality_gate
-        assert "Promising, but not yet reliable enough for routine use" in quality_gate
+        assert "| Auto (persisted gate) | ~ Needs review |" in quality_gate
+        assert "| Post-review outlook |" in quality_gate
         assert "Recommended for assisted internal use with reviewer oversight" in quality_gate
+        assert "not persisted to the manifest" in quality_gate

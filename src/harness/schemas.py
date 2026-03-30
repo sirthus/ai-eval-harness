@@ -96,6 +96,8 @@ class RunManifest(BaseModel):
     borderline_count: int = 0
     fail_count: int = 0
     avg_weighted_score: float = 0.0
+    scorer_type: str = "heuristic"  # "heuristic" | "llm-judge"
+    quality_gate_decision: Literal["pass", "fail", "needs_review"] = "needs_review"
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +127,7 @@ class RunSummary(BaseModel):
     model_version: str
     prompt_version: str
     dataset_version: str
+    quality_gate_decision: Literal["pass", "needs_review", "fail"]
     pass_count: int
     borderline_count: int
     fail_count: int
@@ -139,3 +142,28 @@ class TrendReport(BaseModel):
     per_requirement_history: dict[str, list[dict]]  # req_id → [{run_id, decision, weighted_score}]
     consistently_borderline: list[str]              # req_ids borderline in >50% of runs
     domain_pass_rates: dict[str, dict[str, float]]  # domain → {run_id → pass_rate}
+
+
+# ---------------------------------------------------------------------------
+# LLM judge schemas
+# ---------------------------------------------------------------------------
+
+
+class CoveragePointAssessment(BaseModel):
+    point: str
+    covered: bool
+    evidence: str = ""
+
+
+class LLMJudgeVerdict(BaseModel):
+    """Sidecar audit record written by LLMJudgeScorer per requirement."""
+    requirement_id: str
+    coverage_assessments: list[CoveragePointAssessment]
+    correctness_score: Annotated[float, Field(ge=0.0, le=2.0)]
+    correctness_rationale: str
+    hallucination_risk_score: Annotated[float, Field(ge=0.0, le=2.0)]
+    hallucination_risk_rationale: str
+    reviewer_usefulness_score: Annotated[float, Field(ge=0.0, le=2.0)]
+    reviewer_usefulness_rationale: str
+    judge_model: str
+    judge_prompt_version: str

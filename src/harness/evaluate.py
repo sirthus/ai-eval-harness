@@ -13,6 +13,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Callable
 
 import yaml
 
@@ -31,10 +32,13 @@ SCORED_RESULTS_FILE = "scored_results.json"
 def run(
     config_path: str,
     run_id: str | None = None,
+    scorer: Callable | None = None,
 ) -> list[ScoredResult]:
     """Score all generated outputs. Returns list of ScoredResult.
 
     run_id overrides the config's run_id when provided.
+    scorer is an optional callable with the same signature as score.score().
+    When None, the default heuristic scorer is used.
     Writes scored_results.json to the generated run directory.
     """
     with open(config_path, encoding="utf-8") as f:
@@ -48,6 +52,18 @@ def run(
 
     diagnostics: dict = cfg.get("diagnostics", {})
 
+    if scorer is not None:
+        score_fn = scorer
+    elif cfg.get("scorer") == "llm-judge":
+        from harness.llm_judge import LLMJudgeScorer
+        score_fn = LLMJudgeScorer(
+            judge_model=cfg.get("judge_model", cfg["model_version"]),
+            judge_prompt_version=cfg.get("judge_prompt_version", "judge_v1"),
+            sidecar_dir=generated_dir,
+        ).score
+    else:
+        score_fn = scoring.score
+
     gold_map = _load_gold(gold_path)
     outputs = _load_generated(generated_dir)
 
@@ -57,7 +73,7 @@ def run(
         if gold is None:
             logger.warning("No gold annotation for %s — skipping", req_id)
             continue
-        result = scoring.score(
+        result = score_fn(
             output, gold, weights=weights, thresholds=thresholds, diagnostics=diagnostics
         )
         results.append(result)

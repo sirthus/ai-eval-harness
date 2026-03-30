@@ -28,6 +28,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _inject_chart_markdown(md_content: str, chart_lines: list[str], marker: str) -> str:
+    """Insert chart markdown before marker, or append a fallback section."""
+    if not chart_lines:
+        return md_content
+
+    chart_block = "\n".join(["## Charts", "", *chart_lines, ""])
+    marker_index = md_content.find(marker)
+    if marker_index == -1:
+        logger.warning("Chart injection marker '%s' not found; appending charts to report end", marker)
+        trimmed = md_content.rstrip()
+        return f"{trimmed}\n\n{chart_block}"
+    return md_content[:marker_index] + chart_block + md_content[marker_index:]
+
+
 # ---------------------------------------------------------------------------
 # Data loading helpers
 # ---------------------------------------------------------------------------
@@ -311,6 +325,7 @@ def run(
     reviews_dir: str = "data/reviews",
     reports_dir: str = "reports",
     use_human_review: bool = False,
+    charts: bool = False,
 ) -> tuple[Path, Path]:
     """Run comparison and write report files. Returns (md_path, csv_path)."""
     manifest_a = _load_manifest(runs_dir, run_id_a)
@@ -322,14 +337,33 @@ def run(
     adjudicated_a = load_adjudicated(run_id_a, reviews_dir) if use_human_review else None
     adjudicated_b = load_adjudicated(run_id_b, reviews_dir) if use_human_review else None
 
+    out_dir = Path(reports_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    chart_lines: list[str] = []
+    if charts:
+        from harness import charts as chart_module
+        dist_path = chart_module.plot_compare_distribution(
+            list(results_a.values()), list(results_b.values()),
+            run_id_a, run_id_b, out_dir, timestamp=timestamp,
+        )
+        delta_path = chart_module.plot_compare_delta(
+            results_a, results_b, run_id_a, run_id_b, out_dir, timestamp=timestamp,
+        )
+        if dist_path:
+            chart_lines.append(f"![Distribution Comparison]({dist_path.name})")
+        if delta_path:
+            chart_lines.append(f"![Score Delta]({delta_path.name})")
+
     md_content = build_compare_report(
         results_a, manifest_a, results_b, manifest_b, requirements,
         adjudicated_a=adjudicated_a, adjudicated_b=adjudicated_b,
     )
 
-    out_dir = Path(reports_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    if chart_lines:
+        md_content = _inject_chart_markdown(md_content, chart_lines, "## Aggregate Delta")
+
     md_path = out_dir / f"compare_{run_id_a}_vs_{run_id_b}_{timestamp}.md"
     md_path.write_text(md_content, encoding="utf-8")
     logger.info("Comparison report written: %s", md_path)
@@ -361,6 +395,8 @@ def main() -> None:
     parser.add_argument("--reviews-dir", default="data/reviews")
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--use-human-review", action="store_true", default=False)
+    parser.add_argument("--charts", action="store_true", default=False,
+                        help="Generate PNG charts (requires matplotlib extra)")
     args = parser.parse_args()
     run(
         run_id_a=args.run_a,
@@ -371,6 +407,7 @@ def main() -> None:
         reviews_dir=args.reviews_dir,
         reports_dir=args.reports_dir,
         use_human_review=args.use_human_review,
+        charts=args.charts,
     )
 
 

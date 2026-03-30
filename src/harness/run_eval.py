@@ -25,6 +25,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable, Literal
 
 import yaml
 
@@ -57,7 +58,36 @@ def _make_run_id(base: str, timestamp: datetime) -> str:
     return f"{base}_{stamp}"
 
 
-def run(config_path: str) -> None:
+def _build_scorer(cfg: dict, run_id: str) -> Callable | None:
+    """Construct scorer from config. Returns None for the default heuristic scorer."""
+    scorer_type = cfg.get("scorer", "heuristic")
+    if scorer_type == "llm-judge":
+        from harness.llm_judge import LLMJudgeScorer
+        sidecar_dir = Path(cfg["generated_dir"]) / run_id
+        return LLMJudgeScorer(
+            judge_model=cfg.get("judge_model", cfg["model_version"]),
+            judge_prompt_version=cfg.get("judge_prompt_version", "judge_v1"),
+            sidecar_dir=sidecar_dir,
+        ).score
+    return None  # None → evaluate.run() uses heuristic default
+
+
+def _compute_quality_gate(
+    pass_rate: float,
+    borderlines: int,
+    parse_failures: int,
+) -> Literal["pass", "needs_review", "fail"]:
+    """Compute run-level quality gate decision from aggregate outcomes."""
+    if pass_rate >= 0.70 and borderlines <= 2 and parse_failures == 0:
+        return "pass"
+    if pass_rate < 0.40:
+        return "fail"
+    if borderlines > 0 or parse_failures > 0:
+        return "needs_review"
+    return "fail"
+
+
+def run(config_path: str) -> RunManifest:
     logger.info("=== Starting evaluation run ===")
     logger.info("Config: %s", config_path)
 
@@ -75,9 +105,10 @@ def run(config_path: str) -> None:
     logger.info("--- Step 1: Generate ---")
     _, parse_failure_ids = generate.run(config_path, run_id=run_id)
 
-    # Step 2: Evaluate
+    # Step 2: Evaluate (with optional LLM judge scorer)
     logger.info("--- Step 2: Evaluate ---")
-    results = evaluate.run(config_path, run_id=run_id)
+    scorer = _build_scorer(cfg, run_id)
+    results = evaluate.run(config_path, run_id=run_id, scorer=scorer)
 
     if not results and not parse_failure_ids:
         logger.error("No results produced — check generated outputs.")
@@ -102,6 +133,15 @@ def run(config_path: str) -> None:
     borderlines = sum(1 for r in results if r.decision == "borderline")
     fails = sum(1 for r in results if r.decision == "fail")
     avg_score = sum(r.weighted_score for r in results) / len(results) if results else 0.0
+    parse_failure_count = len(parse_failure_ids)
+
+    evaluated = len(results)
+    pass_rate = passes / evaluated if evaluated else 0.0
+    quality_gate_decision = _compute_quality_gate(
+        pass_rate,
+        borderlines,
+        parse_failure_count,
+    )
 
     manifest = RunManifest(
         run_id=run_id,
@@ -115,12 +155,14 @@ def run(config_path: str) -> None:
         git_commit_hash=git_hash,
         config_file=config_path,
         total_requirements=total_requirements,
-        parse_failures=len(parse_failure_ids),
+        parse_failures=parse_failure_count,
         total_evaluated=len(results),
         pass_count=passes,
         borderline_count=borderlines,
         fail_count=fails,
         avg_weighted_score=round(avg_score, 4),
+        scorer_type=cfg.get("scorer", "heuristic"),
+        quality_gate_decision=quality_gate_decision,
     )
     report.write_report(results, manifest, cfg["reports_dir"])
 
@@ -143,6 +185,8 @@ def run(config_path: str) -> None:
         len(parse_failure_ids),
         avg_score,
     )
+
+    return manifest
 
 
 def main() -> None:

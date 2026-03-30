@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from harness.compare_report import _compute_deltas, build_compare_report
+from harness.compare_report import _compute_deltas, _inject_chart_markdown, build_compare_report
 from harness.schemas import (
     DimensionScores,
     Requirement,
@@ -216,3 +216,27 @@ class TestBuildCompareReport:
         assert "auth" in md
         assert "tasks" in md
         assert "search" in md
+
+
+class TestChartInjection:
+    def test_injects_before_marker_when_present(self):
+        md = "# Report\n\n## Aggregate Delta\n\nBody\n"
+        updated = _inject_chart_markdown(
+            md,
+            ["![Distribution Comparison](compare.png)"],
+            "## Aggregate Delta",
+        )
+        assert updated.index("## Charts") < updated.index("## Aggregate Delta")
+        assert "![Distribution Comparison](compare.png)" in updated
+
+    def test_appends_fallback_section_when_marker_missing(self, caplog):
+        md = "# Report\n\nNo expected section.\n"
+        with caplog.at_level("WARNING"):
+            updated = _inject_chart_markdown(
+                md,
+                ["![Distribution Comparison](compare.png)"],
+                "## Aggregate Delta",
+            )
+        assert "## Charts" in updated
+        assert updated.rstrip().endswith("![Distribution Comparison](compare.png)")
+        assert "not found" in caplog.text

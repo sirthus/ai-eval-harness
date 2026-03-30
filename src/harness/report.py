@@ -25,11 +25,14 @@ def write_report(
     manifest: RunManifest,
     reports_dir: str,
     adjudicated: dict[str, ReviewRecord] | None = None,
+    charts: bool = False,
 ) -> tuple[Path, Path]:
     """Write CSV and markdown report files. Returns (csv_path, md_path).
 
     If adjudicated is provided, human review decisions are shown alongside
     auto decisions. Auto-scored data is never modified.
+    If charts=True, PNG charts are generated in the same directory and
+    embedded as image links in the markdown.
     """
     out_dir = Path(reports_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -37,8 +40,20 @@ def write_report(
     csv_path = out_dir / f"{manifest.run_id}_scores.csv"
     md_path = out_dir / f"{manifest.run_id}_report.md"
 
+    chart_paths: dict[str, Path] = {}
+    if charts:
+        from harness import charts as chart_module
+        for name, fn, args in [
+            ("distribution", chart_module.plot_score_distribution, (results, manifest.run_id, out_dir)),
+            ("dimensions", chart_module.plot_dimension_scores, (results, manifest.run_id, out_dir)),
+            ("per_requirement", chart_module.plot_per_requirement_scores, (results, manifest.run_id, out_dir)),
+        ]:
+            path = fn(*args)
+            if path:
+                chart_paths[name] = path
+
     _write_csv(results, csv_path, adjudicated=adjudicated)
-    _write_markdown(results, manifest, md_path, adjudicated=adjudicated)
+    _write_markdown(results, manifest, md_path, adjudicated=adjudicated, chart_paths=chart_paths)
 
     logger.info("Report written: %s", md_path)
     logger.info("Scores CSV written: %s", csv_path)
@@ -135,6 +150,30 @@ def _quality_gate_recommendation(
     )
 
 
+def _quality_gate_label(decision: str) -> str:
+    labels = {
+        "pass": "✓ Recommended",
+        "needs_review": "~ Needs review",
+        "fail": "✗ Not recommended",
+    }
+    return labels.get(decision, "~ Needs review")
+
+
+def _quality_gate_supporting_context(
+    counts: dict[str, int],
+    total: int,
+    parse_failures: int,
+) -> str:
+    if total == 0:
+        return f"No scored samples. Parse failures: {parse_failures}."
+    return (
+        f"Pass {counts['pass']} ({counts['pass'] / total:.0%}), "
+        f"borderline {counts['borderline']} ({counts['borderline'] / total:.0%}), "
+        f"fail {counts['fail']} ({counts['fail'] / total:.0%}), "
+        f"parse failures {parse_failures}."
+    )
+
+
 def _post_review_decisions(
     results: list[ScoredResult],
     adjudicated: dict[str, ReviewRecord],
@@ -180,6 +219,7 @@ def _write_markdown(
     manifest: RunManifest,
     path: Path,
     adjudicated: dict[str, ReviewRecord] | None = None,
+    chart_paths: dict[str, Path] | None = None,
 ) -> None:
     total = len(results)
     auto_decisions = [r.decision for r in results]
@@ -215,6 +255,9 @@ def _write_markdown(
         "",
     ]
 
+    if chart_paths and "distribution" in chart_paths:
+        lines += [f"![Score Distribution]({chart_paths['distribution'].name})", ""]
+
     _append_aggregate_table(
         lines,
         "### Aggregate Scores (Auto)",
@@ -223,6 +266,9 @@ def _write_markdown(
         avg_weighted=avg_weighted,
         avg_coverage=avg_coverage,
     )
+
+    if chart_paths and "dimensions" in chart_paths:
+        lines += [f"![Dimension Scores]({chart_paths['dimensions'].name})", ""]
 
     if has_adjudications and post_review_counts is not None:
         _append_aggregate_table(
@@ -242,17 +288,24 @@ def _write_markdown(
     ]
     if has_adjudications and post_review_counts is not None:
         lines += [
-            "| View | Recommendation |",
-            "|---|---|",
-            f"| Auto | {_quality_gate_recommendation(auto_decisions)} |",
-            f"| Post-review | {_quality_gate_recommendation(list(post_review.values()))} |",
+            "| View | Status | Notes |",
+            "|---|---|---|",
+            f"| Auto (persisted gate) | {_quality_gate_label(manifest.quality_gate_decision)} | "
+            f"Persisted manifest gate. {_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)} |",
+            f"| Post-review outlook | {_quality_gate_recommendation(list(post_review.values()))} | "
+            f"Derived from adjudicated sample decisions only; not persisted to the manifest. "
+            f"{_quality_gate_supporting_context(post_review_counts, total, manifest.parse_failures)} |",
             "",
         ]
     else:
         lines += [
-            _quality_gate_recommendation(auto_decisions),
+            f"Auto gate: {_quality_gate_label(manifest.quality_gate_decision)}",
+            f"Basis: persisted manifest gate. {_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)}",
             "",
         ]
+
+    if chart_paths and "per_requirement" in chart_paths:
+        lines += [f"![Per-Requirement Scores]({chart_paths['per_requirement'].name})", ""]
 
     if adjudicated is not None:
         lines += [
@@ -383,6 +436,10 @@ def main() -> None:
         "--use-human-review", action="store_true", default=False,
         help="Merge adjudicated human review decisions into the report",
     )
+    parser.add_argument(
+        "--charts", action="store_true", default=False,
+        help="Generate PNG charts and embed them in the report (requires matplotlib extra)",
+    )
     args = parser.parse_args()
 
     from harness.evaluate import scored_results_path
@@ -420,7 +477,7 @@ def main() -> None:
                 run_id,
             )
 
-    write_report(results, manifest, cfg["reports_dir"], adjudicated=adjudicated)
+    write_report(results, manifest, cfg["reports_dir"], adjudicated=adjudicated, charts=args.charts)
 
 
 if __name__ == "__main__":

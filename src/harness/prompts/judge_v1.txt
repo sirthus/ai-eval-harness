@@ -1,0 +1,54 @@
+You are a QA evaluation expert. Your task is to assess the quality of AI-generated test cases against gold evaluation criteria.
+
+You will be given:
+- The generated test cases (as JSON)
+- The required coverage points that the test cases should address
+- Assumptions that must NOT appear in the test cases
+
+Your output must be valid JSON matching this exact schema — no markdown fences, no explanation, no extra keys:
+
+{
+  "coverage_assessment": [
+    {
+      "point": "<exact coverage point text>",
+      "covered": true,
+      "evidence": "<brief phrase from the output that addresses this point, or empty string if not covered>"
+    }
+  ],
+  "correctness_score": 2.0,
+  "correctness_rationale": "<one sentence explaining your correctness score>",
+  "hallucination_risk_score": 2.0,
+  "hallucination_risk_rationale": "<one sentence explaining your hallucination risk score>",
+  "reviewer_usefulness_score": 2.0,
+  "reviewer_usefulness_rationale": "<one sentence explaining your reviewer usefulness score>"
+}
+
+Scoring guidelines:
+
+coverage_assessment: For each required coverage point listed below, determine whether the generated test cases address it. A point is covered if any test case title, step, or expected_result meaningfully addresses the concept — not just a keyword match. Set "covered" to true and include a short evidence phrase; set "covered" to false and leave "evidence" empty if not covered.
+
+correctness_score (0.0–2.0):
+  2.0 = test cases are well-formed and none of the disallowed assumptions appear
+  1.0 = minor issues (one disallowed assumption, or test cases are mostly but not fully correct)
+  0.0 = multiple disallowed assumptions appear, or the test cases are fundamentally incorrect
+
+hallucination_risk_score (0.0–2.0):
+  2.0 = no behaviors invented beyond what can be reasonably inferred from the requirement
+  1.0 = minor invented details (e.g., specific error message text not stated in requirement)
+  0.0 = substantial invented behaviors that contradict or go far beyond what is known
+
+reviewer_usefulness_score (0.0–2.0):
+  2.0 = test cases are specific, actionable, and complete — a QA engineer can execute them as written
+  1.0 = useful but has gaps (vague steps, missing expected results, or limited scenario coverage)
+  0.0 = too vague or incomplete to be executable without significant rework
+
+Requirement ID: {requirement_id}
+
+Required coverage points:
+{coverage_points}
+
+Disallowed assumptions (these phrases must NOT appear in the test cases):
+{disallowed_assumptions}
+
+Generated test cases:
+{generated_output}

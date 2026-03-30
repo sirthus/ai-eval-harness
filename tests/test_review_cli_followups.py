@@ -83,3 +83,31 @@ class TestGoldPathResolution:
                 runs_dir=str(tmp_path / "data" / "runs"),
                 gold_path=None,
             )
+
+    def test_run_exits_nonzero_when_queue_is_missing(self, tmp_path):
+        with pytest.raises(SystemExit) as exc_info:
+            review_run(
+                run_id="run_case",
+                reviews_dir=str(tmp_path / "reviews"),
+                generated_dir=str(tmp_path / "generated"),
+                runs_dir=str(tmp_path / "data" / "runs"),
+                gold_path=None,
+            )
+        assert exc_info.value.code == 1
+
+    def test_run_returns_cleanly_when_queue_is_empty(self, tmp_path, capsys):
+        queue_dir = tmp_path / "reviews" / "run_case"
+        queue_dir.mkdir(parents=True)
+        (queue_dir / "queue.jsonl").write_text("", encoding="utf-8")
+
+        review_run(
+            run_id="run_case",
+            reviews_dir=str(tmp_path / "reviews"),
+            generated_dir=str(tmp_path / "generated"),
+            runs_dir=str(tmp_path / "data" / "runs"),
+            gold_path=None,
+        )
+
+        out = capsys.readouterr().out
+        assert "Review queue is empty" in out
+        assert not (queue_dir / "adjudicated.jsonl").exists()

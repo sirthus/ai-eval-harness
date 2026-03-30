@@ -12,14 +12,18 @@ The core claim it demonstrates is:
 
 The current implementation includes:
 
-- structured test-case generation through Claude
+- structured test-case generation through Anthropic models
 - schema validation of model output
-- gold-based scoring across four dimensions
+- heuristic scoring across four dimensions
+- optional LLM-as-judge scoring with per-sample sidecars
 - a human review queue for borderline samples
 - per-run CSV and markdown reporting
+- optional PNG charts for per-run, compare, and trend reports
 - side-by-side comparison of two runs on the same dataset
 - multi-run trend reporting with domain and consistency views
+- a unified rich CLI through `python -m harness`
 - timestamped run IDs and run manifests for traceability
+- persisted run-level quality gates plus a CI advisory checker
 
 ## Current Boundaries
 
@@ -38,10 +42,12 @@ It does not include:
 
 **Is this model/prompt combination reliable enough to assist QA test design, and where does it still require human review?**
 
-## Current Datasets
+## Current Datasets and Config Paths
 
 - `mvp_dataset.jsonl` / `gold_test_cases.jsonl`: 10-requirement Phase 1 baseline
-- `mvp_dataset_v2.jsonl` / `gold_test_cases_v2.jsonl`: 40-requirement Phase 2 dataset used for prompt comparison, human review, and trend reporting
+- `mvp_dataset_v2.jsonl` / `gold_test_cases_v2.jsonl`: 40-requirement Phase 2 and Phase 3 dataset
+- `configs/run_v2_prompt_v1.yaml` and `configs/run_v2_prompt_v2.yaml`: prompt comparison path
+- `configs/run_v3_haiku.yaml`: alternate model/prompt comparison path added in Phase 3
 
 ## Key Artifacts
 
@@ -49,10 +55,12 @@ A full run produces:
 
 - generated model outputs under `data/generated/{run_id}/`
 - parse/schema failure markers and `parse_failures.jsonl` when applicable
+- optional `{requirement_id}.judge.json` sidecars when LLM-judge scoring is used
 - `scored_results.json` for evaluation output
 - a review queue under `data/reviews/{run_id}/`
 - a run manifest under `data/runs/{run_id}.json`
 - report files under `reports/`
+- optional chart PNGs beside the markdown reports
 
 ## Core Design Principles
 
@@ -60,10 +68,13 @@ A full run produces:
 - Human review is an overlay, not a rewrite of automated results.
 - Parse/schema failures are first-class artifacts.
 - Transient generation failures abort runs rather than becoming permanent sample-level exclusions.
+- Scorer choice is explicit and persisted in the run manifest.
+- Run-level quality gates are policy artifacts, not just display text.
 - Comparison and trend views are only meaningful when dataset consistency is preserved.
 
 ## Where To Start
 
-- [README.md](README.md) for setup, commands, and artifact layout
-- [docs/dataset_design.md](docs/dataset_design.md) for dataset structure and annotation guidance
-- [docs/review_workflow.md](docs/review_workflow.md) for review semantics and reporting behavior
+- [README.md](/mnt/c/Users/dalli/github/ai-eval-harness/README.md) for setup, commands, and artifact layout
+- [docs/dataset_design.md](/mnt/c/Users/dalli/github/ai-eval-harness/docs/dataset_design.md) for dataset structure and annotation guidance
+- [docs/review_workflow.md](/mnt/c/Users/dalli/github/ai-eval-harness/docs/review_workflow.md) for review semantics and reporting behavior
+- [BUILD_PLAN_PHASE3.md](/mnt/c/Users/dalli/github/ai-eval-harness/BUILD_PLAN_PHASE3.md) for the Phase 3 implementation plan and delivered scope

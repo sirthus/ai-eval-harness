@@ -145,6 +145,26 @@ def _display_item(
     output: ModelOutput | None,
     scored: ScoredResult | None,
     gold_notes: str,
+    console=None,
+) -> None:
+    """Display a borderline item for review.
+
+    console: optional rich.console.Console. When None, falls back to print()
+    so existing tests that inject input_fn remain unaffected.
+    """
+    if console is not None:
+        _display_item_rich(index, total, record, output, scored, gold_notes, console)
+    else:
+        _display_item_plain(index, total, record, output, scored, gold_notes)
+
+
+def _display_item_plain(
+    index: int,
+    total: int,
+    record: ReviewRecord,
+    output: ModelOutput | None,
+    scored: ScoredResult | None,
+    gold_notes: str,
 ) -> None:
     print(f"\n{'=' * 60}")
     print(f"=== Review {index} of {total} ===")
@@ -186,6 +206,67 @@ def _display_item(
         print("\n(Generated test cases not available)")
 
 
+def _display_item_rich(
+    index: int,
+    total: int,
+    record: ReviewRecord,
+    output: ModelOutput | None,
+    scored: ScoredResult | None,
+    gold_notes: str,
+    console,
+) -> None:
+    from rich.panel import Panel
+    from rich.table import Table
+
+    header = (
+        f"[bold]Review {index} of {total}[/bold]  |  "
+        f"Run: [dim]{record.run_id}[/dim]  |  "
+        f"Req: [bold]{record.requirement_id}[/bold]\n"
+    )
+    if gold_notes:
+        header += f"Gold notes: [italic]{gold_notes}[/italic]\n"
+
+    scores = record.scores
+    header += (
+        f"\nAuto scores: "
+        f"correctness={scores.correctness:.1f}  "
+        f"completeness={scores.completeness:.1f}  "
+        f"hallucination={scores.hallucination_risk:.1f}  "
+        f"usefulness={scores.reviewer_usefulness:.1f}"
+    )
+    if scored:
+        header += (
+            f"\nWeighted: [yellow]{record.weighted_score:.2f}[/yellow] (borderline) | "
+            f"Coverage: {scored.coverage_ratio:.0%} | "
+            f"Disallowed hits: {', '.join(scored.disallowed_hits) or 'none'}"
+        )
+        if scored.diagnostic_notes:
+            header += f"\nDiagnostics: [dim]{scored.diagnostic_notes}[/dim]"
+
+    console.print(Panel(header, title=f"Borderline Item {index}/{total}", border_style="yellow"))
+
+    if output:
+        tc_table = Table(show_header=True, header_style="bold", show_lines=True)
+        tc_table.add_column("#", style="dim", width=3)
+        tc_table.add_column("Title / Type / Priority")
+        tc_table.add_column("Steps")
+        tc_table.add_column("Expected Result")
+        for i, tc in enumerate(output.test_cases, 1):
+            tc_table.add_row(
+                str(i),
+                f"[bold]{tc.title}[/bold]\n[dim]{tc.type} / {tc.priority}[/dim]",
+                " → ".join(tc.steps),
+                tc.expected_result,
+            )
+        console.print(tc_table)
+        if output.assumptions:
+            console.print(f"[dim]Assumptions:[/dim] {'; '.join(output.assumptions)}")
+        if output.notes:
+            console.print(f"[dim]Notes:[/dim] {output.notes}")
+    else:
+        console.print("[dim](Generated test cases not available)[/dim]")
+
+
 # ---------------------------------------------------------------------------
 # Adjudication session
 # ---------------------------------------------------------------------------
@@ -196,10 +277,12 @@ def adjudicate(
     generated_dir: str,
     gold_path: str,
     input_fn=input,
+    console=None,
 ) -> list[ReviewRecord]:
     """Run interactive adjudication session. Returns updated records.
 
     input_fn can be replaced in tests via monkeypatching.
+    console: optional rich.console.Console for rich display.
     """
     pending = [r for r in records if r.review_decision == "pending"]
     decided = [r for r in records if r.review_decision != "pending"]
@@ -219,7 +302,7 @@ def adjudicate(
         scored = _load_scored_result(generated_dir, run_id, req_id)
         gold_notes = _load_gold_notes(gold_path, req_id)
 
-        _display_item(i, len(pending), record, output, scored, gold_notes)
+        _display_item(i, len(pending), record, output, scored, gold_notes, console=console)
 
         while True:
             decision = input_fn("Decision [p=pass / f=fail / s=skip / q=quit]: ").strip().lower()
@@ -258,11 +341,12 @@ def run(
     generated_dir: str = "data/generated",
     gold_path: str | None = None,
     runs_dir: str = "data/runs",
+    console=None,
 ) -> None:
     queue_path = Path(reviews_dir) / run_id / "queue.jsonl"
     if not queue_path.exists():
         logger.error("Review queue not found: %s", queue_path)
-        return
+        raise SystemExit(1)
 
     records = load_queue(queue_path)
     if not records:
@@ -270,7 +354,7 @@ def run(
         return
 
     resolved_gold = _resolve_gold_path(gold_path, run_id, runs_dir)
-    updated = adjudicate(records, generated_dir, str(resolved_gold))
+    updated = adjudicate(records, generated_dir, str(resolved_gold), console=console)
 
     with open(queue_path, "w", encoding="utf-8") as f:
         for record in updated:

@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from harness.trend_report import (
+    _inject_chart_markdown,
     build_trend_data,
     consistently_borderline_requirements,
     domain_pass_rates,
+    render_trend_markdown,
 )
-from harness.schemas import DimensionScores, Requirement, RunManifest, ScoredResult
+from harness.schemas import DimensionScores, Requirement, RunManifest, RunSummary, ScoredResult, TrendReport
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +44,7 @@ def _manifest(
     pass_count: int = 2,
     borderline_count: int = 1,
     fail_count: int = 0,
+    quality_gate_decision: str = "needs_review",
 ) -> RunManifest:
     return RunManifest(
         run_id=run_id,
@@ -61,6 +64,7 @@ def _manifest(
         borderline_count=borderline_count,
         fail_count=fail_count,
         avg_weighted_score=1.65,
+        quality_gate_decision=quality_gate_decision,
     )
 
 
@@ -188,6 +192,20 @@ class TestBuildTrendData:
         total_entries = sum(len(v) for v in trend.per_requirement_history.values())
         assert total_entries == 4
 
+    def test_run_summary_includes_quality_gate_decision(self, tmp_path):
+        gen_dir = tmp_path / "generated"
+        manifest = _manifest("run_001", quality_gate_decision="fail")
+        _write_results(gen_dir, manifest.run_id, [_result("REQ-001", "pass", 1.8)])
+
+        trend = build_trend_data(
+            [manifest],
+            generated_dir=str(gen_dir),
+            requirements=_requirements(),
+            filter_dataset="mvp_v2",
+        )
+
+        assert trend.runs[0].quality_gate_decision == "fail"
+
 
 # ---------------------------------------------------------------------------
 # consistently_borderline_requirements
@@ -254,3 +272,91 @@ class TestDomainPassRates:
         rates = domain_pass_rates(history, requirements, run_ids=["run_1", "run_2"])
         assert rates["auth"]["run_1"] == pytest.approx(0.0)
         assert rates["auth"]["run_2"] == pytest.approx(1.0)
+
+
+class TestChartInjection:
+    def test_injects_before_marker_when_present(self):
+        md = "# Trend\n\n## Runs Included\n\nBody\n"
+        updated = _inject_chart_markdown(
+            md,
+            ["![Pass Rate Over Time](trend.png)"],
+            "## Runs Included",
+        )
+        assert updated.index("## Charts") < updated.index("## Runs Included")
+        assert "![Pass Rate Over Time](trend.png)" in updated
+
+    def test_appends_fallback_section_when_marker_missing(self, caplog):
+        md = "# Trend\n\nNo expected section.\n"
+        with caplog.at_level("WARNING"):
+            updated = _inject_chart_markdown(
+                md,
+                ["![Pass Rate Over Time](trend.png)"],
+                "## Runs Included",
+            )
+        assert "## Charts" in updated
+        assert updated.rstrip().endswith("![Pass Rate Over Time](trend.png)")
+        assert "not found" in caplog.text
+
+
+class TestQualityGateEvolution:
+    def test_render_uses_persisted_quality_gate_labels(self):
+        trend = TrendReport(
+            generated_at="2026-04-03T12:00:00+00:00",
+            runs=[
+                RunSummary(
+                    run_id="run_pass",
+                    timestamp="2026-04-01T12:00:00+00:00",
+                    model_version="claude",
+                    prompt_version="v1",
+                    dataset_version="mvp_v2",
+                    quality_gate_decision="pass",
+                    pass_count=3,
+                    borderline_count=0,
+                    fail_count=0,
+                    total_evaluated=3,
+                    parse_failures=0,
+                    avg_weighted_score=1.9,
+                ),
+                RunSummary(
+                    run_id="run_review",
+                    timestamp="2026-04-02T12:00:00+00:00",
+                    model_version="claude",
+                    prompt_version="v1",
+                    dataset_version="mvp_v2",
+                    quality_gate_decision="needs_review",
+                    pass_count=3,
+                    borderline_count=0,
+                    fail_count=0,
+                    total_evaluated=3,
+                    parse_failures=2,
+                    avg_weighted_score=1.9,
+                ),
+                RunSummary(
+                    run_id="run_fail",
+                    timestamp="2026-04-03T12:00:00+00:00",
+                    model_version="claude",
+                    prompt_version="v1",
+                    dataset_version="mvp_v2",
+                    quality_gate_decision="fail",
+                    pass_count=1,
+                    borderline_count=0,
+                    fail_count=2,
+                    total_evaluated=3,
+                    parse_failures=0,
+                    avg_weighted_score=1.0,
+                ),
+            ],
+            per_requirement_history={},
+            consistently_borderline=[],
+            domain_pass_rates={},
+        )
+
+        markdown = render_trend_markdown(
+            trend,
+            filter_dataset="mvp_v2",
+            run_counts={"run_fail": 1, "run_pass": 1, "run_review": 1},
+        )
+
+        assert "| `run_pass` | 100% | ✓ Recommended |" in markdown
+        assert "| `run_review` | 100% | ~ Needs review |" in markdown
+        assert "| `run_fail` | 33% | ✗ Not recommended |" in markdown
