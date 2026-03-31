@@ -14,63 +14,21 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from harness.schemas import (
-    DimensionScores,
-    GoldAnnotation,
-    ModelOutput,
-    RunManifest,
-    ScoredResult,
-    TestCase,
-)
+from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult, TestCase
 from harness.run_eval import _compute_quality_gate
+from tests.factories import make_run_manifest, make_scored_result
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_manifest(**overrides) -> RunManifest:
-    defaults = dict(
-        run_id="run_test_20260329T120000Z",
-        model_name="claude",
-        model_version="claude-sonnet-4-6",
-        prompt_version="v2",
-        dataset_version="mvp_v2",
-        scoring_version="v2",
-        threshold_version="v2",
-        timestamp="2026-03-29T12:00:00+00:00",
-        git_commit_hash="abc1234",
-        config_file="configs/run_v2.yaml",
-        total_requirements=10,
-        parse_failures=0,
-        total_evaluated=10,
-        pass_count=8,
-        borderline_count=1,
-        fail_count=1,
-        avg_weighted_score=1.72,
-        scorer_type="heuristic",
-        quality_gate_decision="needs_review",
-    )
-    defaults.update(overrides)
-    return RunManifest(**defaults)
-
-
 def _make_scored_result(
     requirement_id: str,
     decision: str,
     weighted_score: float,
 ) -> ScoredResult:
-    return ScoredResult(
+    return make_scored_result(
         requirement_id=requirement_id,
-        scores=DimensionScores(
-            correctness=2.0,
-            completeness=2.0,
-            hallucination_risk=2.0,
-            reviewer_usefulness=1.0,
-        ),
-        weighted_score=weighted_score,
         decision=decision,
+        weighted_score=weighted_score,
         coverage_ratio=1.0,
     )
 
@@ -82,17 +40,17 @@ def _make_scored_result(
 
 class TestQualityGateDecisionPersisted:
     def test_manifest_schema_has_quality_gate_decision_field(self):
-        m = _make_manifest(quality_gate_decision="pass")
+        m = make_run_manifest(quality_gate_decision="pass")
         assert m.quality_gate_decision == "pass"
 
     def test_quality_gate_decision_serialised_to_json(self):
-        m = _make_manifest(quality_gate_decision="fail")
+        m = make_run_manifest(quality_gate_decision="fail")
         data = json.loads(m.model_dump_json())
         assert "quality_gate_decision" in data
         assert data["quality_gate_decision"] == "fail"
 
     def test_quality_gate_decision_round_trips_from_json(self):
-        m = _make_manifest(quality_gate_decision="needs_review")
+        m = make_run_manifest(quality_gate_decision="needs_review")
         restored = RunManifest.model_validate(json.loads(m.model_dump_json()))
         assert restored.quality_gate_decision == "needs_review"
 
@@ -100,7 +58,7 @@ class TestQualityGateDecisionPersisted:
         """check_quality_gate.py must exit 1 when a recent manifest has quality_gate_decision='fail'."""
         runs_dir = tmp_path / "runs"
         runs_dir.mkdir()
-        m = _make_manifest(quality_gate_decision="fail")
+        m = make_run_manifest(quality_gate_decision="fail")
         (runs_dir / f"{m.run_id}.json").write_text(m.model_dump_json(), encoding="utf-8")
 
         from scripts.check_quality_gate import check
@@ -110,7 +68,7 @@ class TestQualityGateDecisionPersisted:
     def test_check_quality_gate_exits_0_when_all_pass(self, tmp_path):
         runs_dir = tmp_path / "runs"
         runs_dir.mkdir()
-        m = _make_manifest(quality_gate_decision="pass")
+        m = make_run_manifest(quality_gate_decision="pass")
         (runs_dir / f"{m.run_id}.json").write_text(m.model_dump_json(), encoding="utf-8")
 
         from scripts.check_quality_gate import check
@@ -137,6 +95,17 @@ class TestQualityGateDecisionPersisted:
 
     def test_quality_gate_logic_fail_zero_evaluated(self):
         assert _compute_quality_gate(0.0, 0, 0) == "fail"
+
+    def test_manifest_schema_has_is_dirty_field(self):
+        m = make_run_manifest(is_dirty=True)
+        assert m.is_dirty is True
+        data = json.loads(m.model_dump_json())
+        assert "is_dirty" in data
+        assert data["is_dirty"] is True
+
+    def test_manifest_is_dirty_defaults_false(self):
+        m = make_run_manifest()
+        assert m.is_dirty is False
 
 
 # ---------------------------------------------------------------------------

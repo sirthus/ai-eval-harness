@@ -1,11 +1,13 @@
 """Tests for schema validation (schemas.py) and model output parsing (model_adapter.py)."""
 
 import json
+from pathlib import Path
+from typing import get_args
 
 import pytest
 from pydantic import ValidationError
 
-from harness.model_adapter import _parse_output
+from harness.model_adapter import _parse_output, _split_prompt
 from harness.schemas import (
     GoldAnnotation,
     ModelOutput,
@@ -13,6 +15,39 @@ from harness.schemas import (
     RunManifest,
     TestCase,
 )
+
+
+# ---------------------------------------------------------------------------
+# _split_prompt (from model_adapter)
+# ---------------------------------------------------------------------------
+
+
+class TestSplitPrompt:
+    def test_splits_system_and_user_sections(self):
+        template = "### SYSTEM ###\nYou are an assistant.\n### USER ###\nHello {name}."
+        system, user = _split_prompt(template)
+        assert system == "You are an assistant."
+        assert user == "Hello {name}."
+
+    def test_no_markers_returns_flat_as_user(self):
+        template = "Just a flat prompt with {placeholder}."
+        system, user = _split_prompt(template)
+        assert system == ""
+        assert user == template
+
+    def test_marker_lines_stripped_from_output(self):
+        template = "### SYSTEM ###\nsystem content\n### USER ###\nuser content"
+        system, user = _split_prompt(template)
+        assert "### SYSTEM ###" not in system
+        assert "### USER ###" not in user
+        assert "### SYSTEM ###" not in user
+
+    def test_multiline_sections_preserved(self):
+        template = "### SYSTEM ###\nLine one.\nLine two.\n### USER ###\nReq: {req}\nText: {text}"
+        system, user = _split_prompt(template)
+        assert "Line one." in system
+        assert "Line two." in system
+        assert "Req: {req}" in user
 
 
 # ---------------------------------------------------------------------------
@@ -54,6 +89,28 @@ class TestTestCaseSchema:
                 priority="high",
                 type="happy_path",  # not in enum
             )
+
+    def test_security_type_accepted(self):
+        tc = TestCase(
+            title="x",
+            preconditions=[],
+            steps=["step"],
+            expected_result="result",
+            priority="high",
+            type="security",
+        )
+        assert tc.type == "security"
+
+    def test_performance_type_accepted(self):
+        tc = TestCase(
+            title="x",
+            preconditions=[],
+            steps=["step"],
+            expected_result="result",
+            priority="high",
+            type="performance",
+        )
+        assert tc.type == "performance"
 
 
 # ---------------------------------------------------------------------------
@@ -229,3 +286,25 @@ class TestRequirementSchema:
                 domain_tag="auth",
                 difficulty="trivial",  # not in enum
             )
+
+    def test_ambiguous_difficulty_accepted(self):
+        req = Requirement(
+            requirement_id="REQ-009",
+            requirement_text="The system should send notifications.",
+            domain_tag="notifications",
+            difficulty="ambiguous",
+        )
+        assert req.difficulty == "ambiguous"
+
+
+class TestPromptSchemaParity:
+    def test_all_generator_prompts_list_all_test_case_types(self):
+        prompt_dir = Path(__file__).resolve().parents[1] / "src" / "harness" / "prompts"
+        allowed_types = get_args(TestCase.model_fields["type"].annotation)
+
+        for prompt_name in ("v1.txt", "v2.txt", "v3.txt"):
+            prompt_text = (prompt_dir / prompt_name).read_text(encoding="utf-8")
+            type_line = next(line for line in prompt_text.splitlines() if '"type":' in line)
+
+            for allowed_type in allowed_types:
+                assert allowed_type in type_line

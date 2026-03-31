@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -51,8 +50,7 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
     requirements = _load_requirements(dataset_path)
     logger.info("Loaded %d requirements from %s", len(requirements), dataset_path)
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise EnvironmentError("ANTHROPIC_API_KEY is not set")
+    model_adapter._get_anthropic_api_key()
 
     parse_failures: list[str] = []
     for req in requirements:

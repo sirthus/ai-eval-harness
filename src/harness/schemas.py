@@ -17,7 +17,7 @@ class TestCase(BaseModel):
     steps: list[str]
     expected_result: str
     priority: Literal["high", "medium", "low"]
-    type: Literal["positive", "negative", "edge_case", "boundary", "permission"]
+    type: Literal["positive", "negative", "edge_case", "boundary", "permission", "security", "performance"]
 
 
 class ModelOutput(BaseModel):
@@ -36,7 +36,7 @@ class Requirement(BaseModel):
     requirement_id: str
     requirement_text: str
     domain_tag: str
-    difficulty: Literal["easy", "medium", "hard"]
+    difficulty: Literal["easy", "medium", "hard", "ambiguous"]
 
 
 class GoldAnnotation(BaseModel):
@@ -97,6 +97,7 @@ class RunManifest(BaseModel):
     fail_count: int = 0
     avg_weighted_score: float = 0.0
     scorer_type: str = "heuristic"  # "heuristic" | "llm-judge"
+    is_dirty: bool = False
     quality_gate_decision: Literal["pass", "fail", "needs_review"] = "needs_review"
 
 

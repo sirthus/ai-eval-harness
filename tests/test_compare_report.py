@@ -12,6 +12,7 @@ from harness.schemas import (
     RunManifest,
     ScoredResult,
 )
+from tests.factories import make_run_manifest, make_scored_result, make_small_requirements_list
 
 
 # ---------------------------------------------------------------------------
@@ -19,20 +20,8 @@ from harness.schemas import (
 # ---------------------------------------------------------------------------
 
 
-def _dims(c=2.0, comp=2.0, h=2.0, u=2.0) -> DimensionScores:
-    return DimensionScores(
-        correctness=c, completeness=comp, hallucination_risk=h, reviewer_usefulness=u
-    )
-
-
 def _result(req_id: str, decision: str, score: float) -> ScoredResult:
-    return ScoredResult(
-        requirement_id=req_id,
-        scores=_dims(),
-        weighted_score=score,
-        decision=decision,
-        coverage_ratio=0.8,
-    )
+    return make_scored_result(requirement_id=req_id, decision=decision, weighted_score=score)
 
 
 def _manifest(
@@ -41,17 +30,12 @@ def _manifest(
     dataset_version: str = "mvp_v2",
     parse_failures: int = 0,
 ) -> RunManifest:
-    return RunManifest(
+    return make_run_manifest(
         run_id=run_id,
-        model_name="claude",
         model_version="claude-3-5-sonnet-20241022",
         prompt_version=prompt_version,
         dataset_version=dataset_version,
-        scoring_version="v2",
-        threshold_version="v2",
         timestamp="2026-04-02T13:00:00+00:00",
-        git_commit_hash="abc1234",
-        config_file="configs/run_v2.yaml",
         total_requirements=3,
         parse_failures=parse_failures,
         total_evaluated=3,
@@ -62,12 +46,8 @@ def _manifest(
     )
 
 
-def _requirements() -> list[Requirement]:
-    return [
-        Requirement(requirement_id="REQ-001", requirement_text="Auth login", domain_tag="auth", difficulty="easy"),
-        Requirement(requirement_id="REQ-002", requirement_text="Task creation", domain_tag="tasks", difficulty="medium"),
-        Requirement(requirement_id="REQ-003", requirement_text="Search filters", domain_tag="search", difficulty="hard"),
-    ]
+def _requirements():
+    return make_small_requirements_list()
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +168,7 @@ class TestBuildCompareReport:
         manifest_b = _manifest("run_b")
         results_a = {"REQ-001": _result("REQ-001", "borderline", 1.4)}
         results_b = {"REQ-001": _result("REQ-001", "borderline", 1.4)}
-        adj_dims = _dims(c=1.0, comp=1.0, h=1.0, u=2.0)
+        adj_dims = DimensionScores(correctness=1.0, completeness=1.0, hallucination_risk=1.0, reviewer_usefulness=2.0)
         adjudicated_a = {
             "REQ-001": ReviewRecord(
                 run_id="run_a", requirement_id="REQ-001", weighted_score=1.4,
@@ -216,6 +196,26 @@ class TestBuildCompareReport:
         assert "auth" in md
         assert "tasks" in md
         assert "search" in md
+
+    def test_difficulty_breakdown_includes_ambiguous_row(self):
+        manifest_a = _manifest("run_a")
+        manifest_b = _manifest("run_b")
+        requirements = [
+            Requirement(requirement_id="REQ-001", requirement_text="t", domain_tag="auth", difficulty="easy"),
+            Requirement(requirement_id="REQ-002", requirement_text="t", domain_tag="tasks", difficulty="ambiguous"),
+        ]
+        results_a = {
+            "REQ-001": _result("REQ-001", "pass", 1.7),
+            "REQ-002": _result("REQ-002", "borderline", 1.4),
+        }
+        results_b = {
+            "REQ-001": _result("REQ-001", "pass", 1.8),
+            "REQ-002": _result("REQ-002", "fail", 1.0),
+        }
+
+        md = build_compare_report(results_a, manifest_a, results_b, manifest_b, requirements)
+
+        assert "| ambiguous |" in md
 
 
 class TestChartInjection:

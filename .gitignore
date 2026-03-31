@@ -16,6 +16,7 @@ AGENTS.md
 
 # Python
 .venv/
+.codex-pydeps/
 __pycache__/
 *.py[cod]
 *.pyo

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -27,6 +26,11 @@ import anthropic
 from pydantic import ValidationError
 
 from harness import score as heuristic_scoring
+from harness.model_adapter import (
+    _get_anthropic_api_key,
+    _split_prompt,
+    extract_text_content,
+)
 from harness.schemas import (
     CoveragePointAssessment,
     DimensionScores,
@@ -95,9 +99,7 @@ class LLMJudgeScorer:
     def _get_client(self) -> anthropic.Anthropic:
         """Create and cache the Anthropic client for this scorer instance."""
         if self._client is None:
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            if not api_key:
-                raise EnvironmentError("ANTHROPIC_API_KEY is not set")
+            api_key = _get_anthropic_api_key()
             self._client = anthropic.Anthropic(api_key=api_key)
         return self._client
 
@@ -128,6 +130,20 @@ class LLMJudgeScorer:
 
     def _call_judge(self, prompt: str, requirement_id: str) -> str:
         """Call judge model API. Raises on API failure (no retry — caller handles fallback)."""
+        has_system_marker = "### SYSTEM ###" in prompt
+        has_user_marker = "### USER ###" in prompt
+        if has_system_marker != has_user_marker:
+            raise LLMJudgeScorerError(
+                "Judge prompt for "
+                f"{requirement_id} must contain both ### SYSTEM ### and ### USER ### markers or neither"
+            )
+
+        system_text, user_text = _split_prompt(prompt)
+        if has_system_marker and not user_text:
+            raise LLMJudgeScorerError(
+                f"Judge prompt for {requirement_id} has an empty ### USER ### section"
+            )
+
         client = self._get_client()
         logger.info(
             "LLM judge scoring %s with model %s (prompt %s)",
@@ -136,12 +152,23 @@ class LLMJudgeScorer:
             self.judge_prompt_version,
         )
 
-        message = client.messages.create(
+        create_kwargs: dict = dict(
             model=self.judge_model,
             max_tokens=self.max_tokens,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": user_text}],
         )
-        return message.content[0].text.strip()
+        if system_text:
+            create_kwargs["system"] = system_text
+
+        message = client.messages.create(**create_kwargs)
+        try:
+            return extract_text_content(
+                message,
+                requirement_id=requirement_id,
+                source="Judge response",
+            )
+        except ValueError as exc:
+            raise LLMJudgeScorerError(str(exc)) from exc
 
     def _parse_verdict(self, raw: str, requirement_id: str) -> LLMJudgeVerdict:
         """Parse judge JSON verdict. Raises LLMJudgeScorerError on malformed output."""

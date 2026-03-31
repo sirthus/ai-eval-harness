@@ -1,7 +1,10 @@
 # AI Eval Harness — Build Plan Phase 3
 
-> Companion to BUILD_PLAN.md. Contains the Phase 3 implementation strategy, module
-> specifications, build order, and file-by-file checklist.
+> Archived planning document. Use [README](../../README.md), [PROJECT.md](../../PROJECT.md),
+> and [Architecture](../architecture.md) for the current documentation.
+>
+> Original purpose: companion to `BUILD_PLAN.md`, containing the Phase 3 implementation
+> strategy, module specifications, build order, and file-by-file checklist.
 >
 > Phase 3 goals (from CLAUDE.md): charts, better CLI, CI checks, second model/prompt.
 > This document adds a fifth goal carried forward from BUILD_PLAN.md section 7:

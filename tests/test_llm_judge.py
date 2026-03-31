@@ -12,6 +12,7 @@ import pytest
 
 from harness.llm_judge import LLMJudgeScorer, LLMJudgeScorerError
 from harness.schemas import GoldAnnotation, ModelOutput, TestCase
+from tests.factories import make_gold_annotation, make_model_output, make_test_case
 
 
 # ---------------------------------------------------------------------------
@@ -19,36 +20,16 @@ from harness.schemas import GoldAnnotation, ModelOutput, TestCase
 # ---------------------------------------------------------------------------
 
 
-def _make_test_case(
-    title: str = "Test login with valid credentials",
-    steps: list[str] | None = None,
-    expected_result: str = "User is redirected to dashboard",
-    tc_type: str = "positive",
-    priority: str = "high",
-    preconditions: list[str] | None = None,
-) -> TestCase:
-    return TestCase(
-        title=title,
-        preconditions=preconditions or ["Application is running"],
-        steps=steps or ["Enter username", "Enter password", "Click Submit"],
-        expected_result=expected_result,
-        priority=priority,
-        type=tc_type,
-    )
-
-
 def _make_output(
     requirement_id: str = "REQ-001",
     test_cases: list[TestCase] | None = None,
 ) -> ModelOutput:
-    return ModelOutput(
+    return make_model_output(
         requirement_id=requirement_id,
-        test_cases=test_cases or [
-            _make_test_case(title="Valid login succeeds"),
-            _make_test_case(title="Invalid password is rejected", tc_type="negative"),
+        test_cases=test_cases if test_cases is not None else [
+            make_test_case(title="Valid login succeeds"),
+            make_test_case(title="Invalid password is rejected", tc_type="negative"),
         ],
-        assumptions=[],
-        notes="",
     )
 
 
@@ -57,14 +38,10 @@ def _make_gold(
     coverage_points: list[str] | None = None,
     disallowed: list[str] | None = None,
 ) -> GoldAnnotation:
-    return GoldAnnotation(
+    return make_gold_annotation(
         requirement_id=requirement_id,
-        required_coverage_points=coverage_points or [
-            "valid credentials grant access",
-            "invalid credentials are rejected",
-        ],
-        disallowed_assumptions=disallowed or ["assumes admin bypass route exists"],
-        review_notes="",
+        coverage_points=coverage_points,
+        disallowed=disallowed if disallowed is not None else ["assumes admin bypass route exists"],
     )
 
 
@@ -183,6 +160,76 @@ class TestBuildJudgePrompt:
         prompt = scorer._build_judge_prompt(output, gold)
         assert "Valid login succeeds" in prompt  # test case title from the output
 
+    def test_call_judge_passes_system_kwarg_when_prompt_has_markers(self, mocker):
+        """_call_judge must use system= when the assembled prompt has ### SYSTEM ### markers."""
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text=json.dumps(_make_valid_verdict()))]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+
+        scorer = LLMJudgeScorer()
+        output = _make_output()
+        gold = _make_gold()
+        prompt = scorer._build_judge_prompt(output, gold)
+
+        scorer._call_judge(prompt, output.requirement_id)
+
+        call_kwargs = mock_client.messages.create.call_args.kwargs
+        assert "system" in call_kwargs
+        assert call_kwargs["system"]  # non-empty string
+
+    def test_call_judge_rejects_partial_markers(self, mocker):
+        mock_client = MagicMock()
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+
+        scorer = LLMJudgeScorer()
+
+        with pytest.raises(LLMJudgeScorerError, match="must contain both"):
+            scorer._call_judge("### SYSTEM ###\nJudge carefully.", "REQ-001")
+
+        mock_client.messages.create.assert_not_called()
+
+    def test_call_judge_rejects_empty_user_section(self, mocker):
+        mock_client = MagicMock()
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+
+        scorer = LLMJudgeScorer()
+
+        with pytest.raises(LLMJudgeScorerError, match="empty ### USER ### section"):
+            scorer._call_judge("### SYSTEM ###\nJudge carefully.\n### USER ###\n", "REQ-001")
+
+        mock_client.messages.create.assert_not_called()
+
+    def test_call_judge_rejects_empty_response_content(self, mocker):
+        mock_message = MagicMock()
+        mock_message.content = []
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+
+        scorer = LLMJudgeScorer()
+
+        with pytest.raises(LLMJudgeScorerError, match="contained no content blocks"):
+            scorer._call_judge("Judge carefully.", "REQ-001")
+
+    def test_call_judge_rejects_non_text_response_content(self, mocker):
+        mock_message = MagicMock()
+        mock_message.content = [type("Block", (), {"type": "tool_use"})()]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+
+        scorer = LLMJudgeScorer()
+
+        with pytest.raises(LLMJudgeScorerError, match="did not contain a text content block"):
+            scorer._call_judge("Judge carefully.", "REQ-001")
+
 
 class TestScore:
     def test_valid_verdict_produces_correct_scored_result(self, mocker):
@@ -233,6 +280,16 @@ class TestScore:
         result = scorer.score(output, gold)
         assert result.requirement_id == "REQ-001"
 
+    def test_malformed_prompt_triggers_fallback_to_heuristic(self, mocker):
+        scorer = LLMJudgeScorer()
+        mocker.patch.object(scorer, "_build_judge_prompt", return_value="### SYSTEM ###\nJudge carefully.")
+        output = _make_output()
+        gold = _make_gold()
+
+        result = scorer.score(output, gold)
+
+        assert result.requirement_id == "REQ-001"
+
     def test_anthropic_client_is_created_once_per_scorer(self, mocker):
         verdict = _make_valid_verdict()
         mock_message = MagicMock()
@@ -273,6 +330,36 @@ class TestScore:
         output = _make_output()
         gold = _make_gold()
         result = scorer.score(output, gold)
+        assert result.requirement_id == "REQ-001"
+
+    def test_empty_judge_response_triggers_fallback(self, mocker):
+        mock_message = MagicMock()
+        mock_message.content = []
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        scorer = LLMJudgeScorer()
+        output = _make_output()
+        gold = _make_gold()
+
+        result = scorer.score(output, gold)
+
+        assert result.requirement_id == "REQ-001"
+
+    def test_non_text_judge_response_triggers_fallback(self, mocker):
+        mock_message = MagicMock()
+        mock_message.content = [type("Block", (), {"type": "tool_use"})()]
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_message
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        scorer = LLMJudgeScorer()
+        output = _make_output()
+        gold = _make_gold()
+
+        result = scorer.score(output, gold)
+
         assert result.requirement_id == "REQ-001"
 
     def test_scored_result_fields_map_from_verdict(self, mocker):

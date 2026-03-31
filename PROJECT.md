@@ -1,80 +1,69 @@
-# Project Snapshot
-
-## Summary
+# Engineering Brief
 
 This repository evaluates AI-generated QA test cases from requirement snippets.
 
-The core claim it demonstrates is:
+Its core claim is:
 
-**A small, disciplined harness can measure whether an LLM produces useful QA test cases, using a gold dataset, explicit scoring, human review, and repeatable reporting.**
+> A compact, disciplined harness can measure whether an LLM produces useful QA test cases by combining structured generation, explicit scoring, human review, and repeatable reporting.
 
-## Current Capabilities
+## Architecture Summary
 
-The current implementation includes:
+The system is intentionally pipeline-shaped.
 
-- structured test-case generation through Anthropic models
-- schema validation of model output
-- heuristic scoring across four dimensions
-- optional LLM-as-judge scoring with per-sample sidecars
-- a human review queue for borderline samples
-- per-run CSV and markdown reporting
-- optional PNG charts for per-run, compare, and trend reports
-- side-by-side comparison of two runs on the same dataset
-- multi-run trend reporting with domain and consistency views
-- a unified rich CLI through `python -m harness`
-- timestamped run IDs and run manifests for traceability
-- persisted run-level quality gates plus a CI advisory checker
+1. `generate.py` calls the model and writes structured JSON outputs per requirement.
+2. `evaluate.py` validates and scores those outputs against gold annotations.
+3. `review_queue.py` routes borderline results into a separate human-review path.
+4. `report.py`, `compare_report.py`, and `trend_report.py` turn run artifacts into decision-support outputs.
+5. `run_eval.py` coordinates the full flow and persists a run manifest with traceability metadata.
+
+This design keeps each concern narrow:
+
+- generation is separate from scoring
+- automated scoring is separate from human review
+- report generation is separate from artifact creation
+- experiment metadata is separate from display-only summaries
+
+## Major Design Choices
+
+| Choice | Why it matters |
+|---|---|
+| Schema-first model output | Keeps generation measurable and parseable instead of relying on prose evaluation |
+| Gold annotations instead of exact-string matching | Lets the scorer reason about coverage points and disallowed assumptions rather than brittle literal matches |
+| Borderline review queue | Acknowledges that some samples need human judgment instead of pretending automation is fully reliable |
+| Immutable auto-scored artifacts | Preserves a clean audit trail and keeps adjudication as an overlay |
+| Explicit scorer mode | Makes heuristic vs judge-model runs comparable and traceable |
+| Run-level quality gates | Turns report findings into an operational recommendation artifact |
+| Same-dataset comparison rule | Prevents misleading deltas between runs evaluated on different ground truth |
+
+## Design Rationale
+
+The design prioritizes:
+
+- evaluation thinking over prompt-only iteration
+- careful data and artifact modeling
+- human-in-the-loop workflow design
+- traceability and experiment hygiene
+- a thin CLI layer over a composable, testable core
 
 ## Current Boundaries
 
-This project is intentionally not a broad QA platform.
+This is not a general QA platform.
 
-It does not include:
+It intentionally does not include:
 
 - a UI
+- a dashboard layer
 - RAG or vector search
-- autonomous defect generation
-- workflow agents
-- dashboards
-- large-scale distributed evaluation infrastructure
+- autonomous agent workflows
+- production-scale orchestration
 
-## Main Question It Answers
+The project is strongest as a focused evaluation harness, not as an end-user product.
 
-**Is this model/prompt combination reliable enough to assist QA test design, and where does it still require human review?**
+## What To Read Next
 
-## Current Datasets and Config Paths
-
-- `mvp_dataset.jsonl` / `gold_test_cases.jsonl`: 10-requirement Phase 1 baseline
-- `mvp_dataset_v2.jsonl` / `gold_test_cases_v2.jsonl`: 40-requirement Phase 2 and Phase 3 dataset
-- `configs/run_v2_prompt_v1.yaml` and `configs/run_v2_prompt_v2.yaml`: prompt comparison path
-- `configs/run_v3_haiku.yaml`: alternate model/prompt comparison path added in Phase 3
-
-## Key Artifacts
-
-A full run produces:
-
-- generated model outputs under `data/generated/{run_id}/`
-- parse/schema failure markers and `parse_failures.jsonl` when applicable
-- optional `{requirement_id}.judge.json` sidecars when LLM-judge scoring is used
-- `scored_results.json` for evaluation output
-- a review queue under `data/reviews/{run_id}/`
-- a run manifest under `data/runs/{run_id}.json`
-- report files under `reports/`
-- optional chart PNGs beside the markdown reports
-
-## Core Design Principles
-
-- Auto-scored artifacts are immutable once written.
-- Human review is an overlay, not a rewrite of automated results.
-- Parse/schema failures are first-class artifacts.
-- Transient generation failures abort runs rather than becoming permanent sample-level exclusions.
-- Scorer choice is explicit and persisted in the run manifest.
-- Run-level quality gates are policy artifacts, not just display text.
-- Comparison and trend views are only meaningful when dataset consistency is preserved.
-
-## Where To Start
-
-- [README.md](/mnt/c/Users/dalli/github/ai-eval-harness/README.md) for setup, commands, and artifact layout
-- [docs/dataset_design.md](/mnt/c/Users/dalli/github/ai-eval-harness/docs/dataset_design.md) for dataset structure and annotation guidance
-- [docs/review_workflow.md](/mnt/c/Users/dalli/github/ai-eval-harness/docs/review_workflow.md) for review semantics and reporting behavior
-- [BUILD_PLAN_PHASE3.md](/mnt/c/Users/dalli/github/ai-eval-harness/BUILD_PLAN_PHASE3.md) for the Phase 3 implementation plan and delivered scope
+- [README.md](README.md) for the project overview
+- [docs/architecture.md](docs/architecture.md) for the system flow and artifact lifecycle
+- [docs/report_examples.md](docs/report_examples.md) for the reporting outputs and how to interpret them
+- [docs/dataset_design.md](docs/dataset_design.md) for dataset and annotation design
+- [docs/review_workflow.md](docs/review_workflow.md) for the human-review layer
+- [docs/history/README.md](docs/history/README.md) for archived implementation plans

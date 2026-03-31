@@ -1,5 +1,8 @@
 # Phase 2 Implementation Blueprint — ai-eval-harness
 
+> Archived planning document. Use [README](../../README.md) and [PROJECT.md](../../PROJECT.md)
+> for the current project overview.
+
 ## Grounding Observations from Phase 1 Codebase
 
 Three design facts that matter for every section below:

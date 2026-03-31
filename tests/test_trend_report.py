@@ -14,7 +14,8 @@ from harness.trend_report import (
     domain_pass_rates,
     render_trend_markdown,
 )
-from harness.schemas import DimensionScores, Requirement, RunManifest, RunSummary, ScoredResult, TrendReport
+from harness.schemas import Requirement, RunManifest, RunSummary, ScoredResult, TrendReport
+from tests.factories import make_run_manifest, make_scored_result, make_small_requirements_list
 
 
 # ---------------------------------------------------------------------------
@@ -22,18 +23,8 @@ from harness.schemas import DimensionScores, Requirement, RunManifest, RunSummar
 # ---------------------------------------------------------------------------
 
 
-def _dims() -> DimensionScores:
-    return DimensionScores(correctness=2.0, completeness=2.0, hallucination_risk=2.0, reviewer_usefulness=2.0)
-
-
 def _result(req_id: str, decision: str, score: float) -> ScoredResult:
-    return ScoredResult(
-        requirement_id=req_id,
-        scores=_dims(),
-        weighted_score=score,
-        decision=decision,
-        coverage_ratio=0.8,
-    )
+    return make_scored_result(requirement_id=req_id, decision=decision, weighted_score=score)
 
 
 def _manifest(
@@ -46,19 +37,14 @@ def _manifest(
     fail_count: int = 0,
     quality_gate_decision: str = "needs_review",
 ) -> RunManifest:
-    return RunManifest(
+    return make_run_manifest(
         run_id=run_id,
-        model_name="claude",
         model_version="claude-3-5-sonnet-20241022",
         prompt_version=prompt_version,
         dataset_version=dataset_version,
-        scoring_version="v2",
-        threshold_version="v2",
         timestamp=timestamp,
-        git_commit_hash="abc1234",
         config_file="configs/run.yaml",
         total_requirements=3,
-        parse_failures=0,
         total_evaluated=3,
         pass_count=pass_count,
         borderline_count=borderline_count,
@@ -77,11 +63,7 @@ def _write_results(tmp_path: Path, run_id: str, results: list[ScoredResult]) -> 
 
 
 def _requirements() -> list[Requirement]:
-    return [
-        Requirement(requirement_id="REQ-001", requirement_text="Auth login", domain_tag="auth", difficulty="easy"),
-        Requirement(requirement_id="REQ-002", requirement_text="Task create", domain_tag="tasks", difficulty="medium"),
-        Requirement(requirement_id="REQ-003", requirement_text="Search", domain_tag="search", difficulty="hard"),
-    ]
+    return make_small_requirements_list()
 
 
 # ---------------------------------------------------------------------------
