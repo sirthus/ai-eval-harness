@@ -1,7 +1,10 @@
 # AI Eval Harness — Build Plan
 
-> Companion to PROJECT.md. Contains implementation strategy, schema design, data formats,
-> config structure, and a Phase 1 file-by-file checklist.
+> Archived planning document. Use [README](../../README.md) and [PROJECT.md](../../PROJECT.md)
+> for the current project documentation.
+>
+> Original purpose: companion to `PROJECT.md`, containing the implementation strategy,
+> schema design, data formats, config structure, and a Phase 1 file-by-file checklist.
 
 ---
 

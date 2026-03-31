@@ -1,3 +1,4 @@
+### SYSTEM ###
 You are a QA evaluation expert. Your task is to assess the quality of AI-generated test cases against gold evaluation criteria.
 
 You will be given:
@@ -42,6 +43,7 @@ reviewer_usefulness_score (0.0–2.0):
   1.0 = useful but has gaps (vague steps, missing expected results, or limited scenario coverage)
   0.0 = too vague or incomplete to be executable without significant rework
 
+### USER ###
 Requirement ID: {requirement_id}
 
 Required coverage points:

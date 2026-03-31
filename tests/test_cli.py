@@ -8,7 +8,8 @@ import pytest
 from rich.console import Console
 
 from harness.cli import make_parser, print_results_table, print_run_summary
-from harness.schemas import DimensionScores, RunManifest, ScoredResult
+from harness.schemas import RunManifest, ScoredResult
+from tests.factories import make_run_manifest, make_scored_result
 
 
 # ---------------------------------------------------------------------------
@@ -26,16 +27,8 @@ def _make_manifest(
     scorer_type: str = "heuristic",
 ) -> RunManifest:
     total = pass_count + borderline_count + fail_count
-    return RunManifest(
+    return make_run_manifest(
         run_id=run_id,
-        model_name="claude",
-        model_version="claude-sonnet-4-6",
-        prompt_version="v2",
-        dataset_version="mvp_v2",
-        scoring_version="v2",
-        threshold_version="v2",
-        timestamp="2026-03-29T12:00:00+00:00",
-        git_commit_hash="abc1234",
         config_file="configs/run_v2_prompt_v2.yaml",
         total_requirements=total,
         parse_failures=parse_failures,
@@ -49,18 +42,7 @@ def _make_manifest(
 
 
 def _make_result(req_id: str, decision: str = "pass", score: float = 1.8) -> ScoredResult:
-    return ScoredResult(
-        requirement_id=req_id,
-        scores=DimensionScores(
-            correctness=2.0,
-            completeness=2.0,
-            hallucination_risk=2.0,
-            reviewer_usefulness=1.0,
-        ),
-        weighted_score=score,
-        decision=decision,
-        coverage_ratio=1.0,
-    )
+    return make_scored_result(requirement_id=req_id, decision=decision, weighted_score=score, coverage_ratio=1.0)
 
 
 def _capture_console() -> tuple[Console, StringIO]:

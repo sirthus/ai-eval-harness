@@ -1,17 +1,39 @@
 # Dataset Design
 
-## Overview
+Related docs: [README](../README.md), [Architecture](architecture.md), [Review Workflow](review_workflow.md)
 
-The repo contains two requirement/gold pairs:
+## Why The Dataset Exists
+
+The dataset is intentionally small enough to inspect and rich enough to make evaluation interesting.
+
+This repo is not trying to prove scale. It is trying to prove that an LLM evaluation harness can:
+
+- measure structured QA-test generation against explicit expectations
+- distinguish strong outputs from merely plausible ones
+- surface ambiguity and underspecification instead of hiding them
+
+## Current Dataset Pairs
 
 | Dataset | Gold | Size | Purpose |
 |---|---|---|---|
-| `mvp_dataset.jsonl` | `gold_test_cases.jsonl` | 10 requirements | Phase 1 baseline |
-| `mvp_dataset_v2.jsonl` | `gold_test_cases_v2.jsonl` | 40 requirements | Current comparison, review, and trend workflow |
+| `mvp_dataset.jsonl` | `gold_test_cases.jsonl` | 10 requirements | Small baseline run |
+| `mvp_dataset_v2.jsonl` | `gold_test_cases_v2.jsonl` | 40 requirements | Main comparison, review, and trend workflow |
 
 `mvp_dataset_v2.jsonl` is the primary working dataset for the current system.
 
-## Phase 2 Domain Distribution
+## What Makes The Dataset Meaningful
+
+The dataset deliberately includes:
+
+- multi-condition requirements such as scope boundaries and downgrade flows
+- state-dependent requirements such as sessions, overdue logic, or async exports
+- underspecified requirements where reviewer judgment matters
+- adversarial or tricky inputs such as SQL-like strings and filename edge cases
+- cross-domain requirements where one feature affects another
+
+That mix forces the scoring logic and review queue to do real work. A dataset made only of happy-path requirements would make the harness look stronger than it really is.
+
+## Domain Distribution
 
 | Domain | Count | Notes |
 |---|---|---|
@@ -22,55 +44,55 @@ The repo contains two requirement/gold pairs:
 | `notifications` | 3 | Delivery and preference behavior |
 | `billing` | 3 | Subscription and invoice behavior |
 | `api` | 7 | Error shape, auth, validation, rate limiting, pagination |
-| `data_export` | 4 | CSV/JSON export, async exports, filename handling |
+| `data_export` | 4 | CSV and JSON export, async exports, filename handling |
 | `onboarding` | 3 | Welcome flows, wizard behavior, skip behavior |
 
-## Phase 2 Difficulty Distribution
+## Difficulty Distribution
 
 | Difficulty | Count | Notes |
 |---|---|---|
-| `easy` | 11 | Happy-path and straightforward validation cases |
-| `medium` | 18 | Multi-step flows, validation, and state transitions |
-| `hard` | 11 | Ambiguous, stateful, adversarial, or multi-condition requirements |
+| `easy` | 11 | Straightforward validation and happy-path cases |
+| `medium` | 18 | Multi-step flows and richer state transitions |
+| `hard` | 11 | Ambiguous, adversarial, or highly stateful requirements |
 
-## Design Characteristics
+The point of the difficulty labels is not to rank requirements abstractly. It is to make trend and comparison outputs more informative.
 
-The dataset deliberately includes:
-
-- multi-condition requirements such as role-scope boundaries and downgrade flows
-- state-dependent requirements such as session changes and overdue logic
-- underspecified requirements where reviewer judgment matters
-- adversarial inputs such as SQL-like strings and unicode filename handling
-- cross-domain requirements where one feature affects another
-
-This mix makes the scorer and human review queue do real work instead of only validating happy paths.
-
-## Gold Annotation Structure
+## Gold Annotation Model
 
 Each gold record contains:
 
-- `required_coverage_points`: observable behaviors the generated tests should cover
-- `acceptable_variants`: per-point synonym phrases that still count as coverage
-- `disallowed_assumptions`: assumptions that should not be invented by the model
-- `review_notes`: optional context for reviewers
-- `gold_test_cases`: optional example test cases for reference
+| Field | Purpose |
+|---|---|
+| `required_coverage_points` | Observable behaviors the generated test cases should cover |
+| `acceptable_variants` | Alternate wording that still counts as coverage for a specific point |
+| `disallowed_assumptions` | Unsupported behavior the model should not invent |
+| `review_notes` | Reviewer context for underspecified or tricky requirements |
+| `gold_test_cases` | Optional example cases for reference |
 
-`acceptable_variants` are keyed by coverage point. A variant only credits the point it belongs to.
+This structure lets the harness evaluate meaningfully without depending on exact string matches.
 
-## Dataset Maintenance Checklist
+## Why This Supports Evaluation Better Than Literal Matching
 
-Use this checklist when auditing or revising a gold file:
+- coverage points focus on behavior, not phrasing
+- acceptable variants let good alternate wording count when it is still faithful
+- disallowed assumptions let the harness penalize confident invention
+- review notes create a place to document ambiguity that scoring alone cannot settle
 
-- Each `required_coverage_points` entry is a distinct observable behavior, not a paraphrase of the requirement text
-- `acceptable_variants` reflect realistic alternate phrasing a good model might use
-- `disallowed_assumptions` are specific enough to be detectable and not just common words
-- `difficulty` reflects the actual cognitive load of writing strong test cases
+In other words, the gold data is designed for evaluation, not for brittle answer-key matching.
+
+## Maintenance Checklist
+
+Use this checklist when revising or expanding the gold files:
+
+- each `required_coverage_points` entry is a distinct observable behavior
+- `acceptable_variants` are realistic alternate phrasing, not a second copy of the same point
+- `disallowed_assumptions` are specific enough to detect and meaningful enough to penalize
+- `difficulty` reflects actual QA reasoning difficulty, not just requirement length
 - `domain_tag` reflects the primary concern even when a requirement crosses domains
-- Underspecified requirements include `review_notes` explaining what is missing or ambiguous
+- underspecified requirements include `review_notes` that explain what judgment a reviewer may need to apply
 
-## Versioning Policy
+## Versioning And Comparability
 
-- `mvp_dataset.jsonl` / `gold_test_cases.jsonl` are the Phase 1 baseline
-- `mvp_dataset_v2.jsonl` / `gold_test_cases_v2.jsonl` are the current Phase 2 working pair
+Changing gold annotations after runs have been recorded weakens comparison value. If the gold needs to change materially, treat that as a new dataset version instead of silently mutating the old ground truth.
 
-Changing gold annotations after runs have been recorded invalidates comparisons with earlier reports. If the gold must change, treat that as a new dataset version.
+That rule matters because compare and trend reports only stay honest when the underlying evaluation target is stable.

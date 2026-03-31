@@ -2,7 +2,6 @@
 
 import pytest
 
-from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, TestCase
 from harness.score import (
     _coverage_ratio,
     _disallowed_hits,
@@ -13,57 +12,7 @@ from harness.score import (
     score_hallucination_risk,
     score_reviewer_usefulness,
 )
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-def make_test_case(
-    title: str = "Login succeeds",
-    preconditions: list[str] | None = None,
-    steps: list[str] | None = None,
-    expected_result: str = "User is redirected to dashboard",
-    priority: str = "high",
-    tc_type: str = "positive",
-) -> TestCase:
-    return TestCase(
-        title=title,
-        preconditions=preconditions or ["User account exists"],
-        steps=steps or ["Open login page", "Enter credentials", "Submit"],
-        expected_result=expected_result,
-        priority=priority,
-        type=tc_type,
-    )
-
-
-def make_output(
-    req_id: str = "REQ-001",
-    test_cases: list[TestCase] | None = None,
-    assumptions: list[str] | None = None,
-    notes: str = "",
-) -> ModelOutput:
-    return ModelOutput(
-        requirement_id=req_id,
-        test_cases=test_cases or [make_test_case()],
-        assumptions=assumptions or [],
-        notes=notes,
-    )
-
-
-def make_gold(
-    req_id: str = "REQ-001",
-    coverage_points: list[str] | None = None,
-    variants: dict[str, list[str]] | None = None,
-    disallowed: list[str] | None = None,
-) -> GoldAnnotation:
-    return GoldAnnotation(
-        requirement_id=req_id,
-        required_coverage_points=coverage_points or ["redirected to dashboard", "user account exists"],
-        acceptable_variants=variants or {},
-        disallowed_assumptions=disallowed or [],
-    )
+from tests.factories import make_gold_annotation as make_gold, make_model_output as make_output, make_test_case
 
 
 # ---------------------------------------------------------------------------
@@ -307,8 +256,8 @@ class TestScoreReviewerUsefulness:
 
     def test_missing_preconditions(self):
         tcs = [
-            make_test_case(steps=["s1", "s2", "s3"], preconditions=[]),
-            make_test_case(steps=["s1", "s2", "s3"], preconditions=[], tc_type="negative"),
+            make_test_case(title="Login succeeds", steps=["s1", "s2", "s3"], preconditions=[]),
+            make_test_case(title="Login fails", steps=["s1", "s2", "s3"], preconditions=[], tc_type="negative"),
         ]
         output = make_output(test_cases=tcs)
         # Has: avg_steps>=3 ✓, all expected_results ✓, types>=2 ✓, preconditions ✗ → 3 signals → 2
@@ -379,7 +328,7 @@ class TestScore:
         assert result_with_hit.weighted_score < result_clean.weighted_score
 
     def test_result_contains_requirement_id(self):
-        output = make_output(req_id="REQ-007")
-        gold = make_gold(req_id="REQ-007")
+        output = make_output(requirement_id="REQ-007")
+        gold = make_gold(requirement_id="REQ-007")
         result = score(output, gold)
         assert result.requirement_id == "REQ-007"

@@ -40,16 +40,34 @@ logger = logging.getLogger(__name__)
 
 
 def _git_commit_hash() -> str:
+    command = ["git", "rev-parse", "--short", "HEAD"]
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
+            command,
             capture_output=True,
             text=True,
             check=True,
         )
         return result.stdout.strip()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to determine git commit hash via %s: %s", command, exc)
         return "unknown"
+
+
+def _git_is_dirty() -> bool:
+    """Return True if the working tree has uncommitted changes. Defaults to True on error."""
+    command = ["git", "status", "--porcelain"]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return bool(result.stdout.strip())
+    except Exception as exc:
+        logger.warning("Failed to determine git dirty state via %s: %s", command, exc)
+        return True  # unknown state — treat as dirty
 
 
 def _make_run_id(base: str, timestamp: datetime) -> str:
@@ -98,6 +116,7 @@ def run(config_path: str) -> RunManifest:
     # Unique ID for this execution; config run_id is the series/version identifier.
     run_id = _make_run_id(cfg["run_id"], timestamp)
     git_hash = _git_commit_hash()
+    git_dirty = _git_is_dirty()
 
     logger.info("Run ID: %s", run_id)
 
@@ -153,6 +172,7 @@ def run(config_path: str) -> RunManifest:
         threshold_version=cfg["threshold_version"],
         timestamp=timestamp.isoformat(),
         git_commit_hash=git_hash,
+        is_dirty=git_dirty,
         config_file=config_path,
         total_requirements=total_requirements,
         parse_failures=parse_failure_count,

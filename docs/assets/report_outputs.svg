@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic reporting outputs</title>
+  <desc id="desc">A sanitized overview of per-run, compare, and trend reporting outputs.</desc>
+  <rect width="1200" height="760" fill="#f8fafc"/>
+  <text x="90" y="92" fill="#0f172a" font-size="34" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Reporting outputs at a glance</text>
+  <text x="90" y="126" fill="#475569" font-size="20" font-family="Inter, Segoe UI, Arial, sans-serif">Synthetic examples of the per-run, compare, and trend artifacts produced by the harness.</text>
+
+  <rect x="90" y="170" width="320" height="500" rx="20" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="90" y="170" width="320" height="64" rx="20" fill="#dbeafe"/>
+  <rect x="90" y="214" width="320" height="20" fill="#dbeafe"/>
+  <text x="118" y="210" fill="#1d4ed8" font-size="24" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Per-run report</text>
+  <text x="118" y="258" fill="#0f172a" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">run_v2_prompt_v2_20260410T153000Z</text>
+  <text x="118" y="302" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Aggregate scores</text>
+  <text x="118" y="340" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">Pass: 28 (70%)</text>
+  <text x="118" y="370" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">Borderline: 8 (20%)</text>
+  <text x="118" y="400" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">Fail: 4 (10%)</text>
+  <text x="118" y="448" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Quality gate</text>
+  <rect x="118" y="466" width="156" height="36" rx="18" fill="#fef3c7"/>
+  <text x="143" y="490" fill="#92400e" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">needs_review</text>
+  <text x="118" y="544" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Artifacts</text>
+  <text x="118" y="576" fill="#475569" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">scores.csv</text>
+  <text x="118" y="602" fill="#475569" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">report.md</text>
+
+  <rect x="440" y="170" width="320" height="500" rx="20" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="440" y="170" width="320" height="64" rx="20" fill="#dcfce7"/>
+  <rect x="440" y="214" width="320" height="20" fill="#dcfce7"/>
+  <text x="468" y="210" fill="#15803d" font-size="24" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Compare report</text>
+  <text x="468" y="258" fill="#0f172a" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">run_v2_prompt_v1 vs run_v2_prompt_v2</text>
+  <text x="468" y="302" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Aggregate delta</text>
+  <text x="468" y="340" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">Pass rate: 60% -&gt; 70%</text>
+  <text x="468" y="370" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">Avg score: 1.49 -&gt; 1.63</text>
+  <text x="468" y="418" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Notable changes</text>
+  <text x="468" y="452" fill="#475569" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif">REQ-014: borderline -&gt; pass</text>
+  <text x="468" y="478" fill="#475569" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif">REQ-031: pass -&gt; borderline</text>
+  <text x="468" y="544" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Artifacts</text>
+  <text x="468" y="576" fill="#475569" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">compare_...md</text>
+  <text x="468" y="602" fill="#475569" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">compare_...csv</text>
+
+  <rect x="790" y="170" width="320" height="500" rx="20" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="790" y="170" width="320" height="64" rx="20" fill="#ede9fe"/>
+  <rect x="790" y="214" width="320" height="20" fill="#ede9fe"/>
+  <text x="818" y="210" fill="#6d28d9" font-size="24" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Trend report</text>
+  <text x="818" y="258" fill="#0f172a" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">mvp_v2 run history</text>
+  <text x="818" y="302" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Runs included</text>
+  <text x="818" y="340" fill="#334155" font-size="17" font-family="Inter, Segoe UI, Arial, sans-serif">3 runs, pass rate rising</text>
+  <text x="818" y="384" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Consistency view</text>
+  <text x="818" y="418" fill="#475569" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif">REQ-009 borderline across runs</text>
+  <text x="818" y="444" fill="#475569" font-size="16" font-family="Inter, Segoe UI, Arial, sans-serif">REQ-027 borderline across runs</text>
+  <text x="818" y="500" fill="#334155" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Domain trends</text>
+  <rect x="818" y="522" width="220" height="16" rx="8" fill="#e2e8f0"/>
+  <rect x="818" y="522" width="176" height="16" rx="8" fill="#8b5cf6"/>
+  <text x="1048" y="536" fill="#475569" font-size="14" font-family="Inter, Segoe UI, Arial, sans-serif">auth 80%</text>
+  <rect x="818" y="550" width="220" height="16" rx="8" fill="#e2e8f0"/>
+  <rect x="818" y="550" width="154" height="16" rx="8" fill="#8b5cf6"/>
+  <text x="1048" y="564" fill="#475569" font-size="14" font-family="Inter, Segoe UI, Arial, sans-serif">tasks 70%</text>
+  <text x="818" y="602" fill="#475569" font-size="16" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">trend_...md / trend_...csv</text>
+
+  <text x="90" y="718" fill="#64748b" font-size="18" font-family="Inter, Segoe UI, Arial, sans-serif">Synthetic example for documentation only. Metrics and run IDs are illustrative.</text>
+</svg>

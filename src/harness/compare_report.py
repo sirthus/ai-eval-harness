@@ -248,7 +248,7 @@ def build_compare_report(
     lines.append("")
 
     # ---------- Difficulty breakdown ----------
-    difficulties = ["easy", "medium", "hard"]
+    difficulties = ["easy", "medium", "hard", "ambiguous"]
     lines += [
         "## Difficulty Breakdown",
         "",

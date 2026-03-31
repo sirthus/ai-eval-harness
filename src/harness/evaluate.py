@@ -119,7 +119,15 @@ def _load_gold(path: str) -> dict[str, GoldAnnotation]:
 
 def _load_generated(directory: Path) -> dict[str, ModelOutput]:
     outputs: dict[str, ModelOutput] = {}
-    for json_file in sorted(directory.glob("REQ-*.json")):
+    for json_file in sorted(directory.glob("*.json")):
+        if not json_file.is_file():
+            continue
+        if json_file.name == SCORED_RESULTS_FILE:
+            continue
+        if json_file.name.endswith(".judge.json"):
+            continue
+        if json_file.name.endswith(".fail.json"):
+            continue
         data = json.loads(json_file.read_text(encoding="utf-8"))
         output = ModelOutput.model_validate(data)
         outputs[output.requirement_id] = output

@@ -59,6 +59,55 @@ def _write_config(tmp_path: Path, dataset_path: Path) -> Path:
 
 
 class TestGenerateFailureHandling:
+    def test_dotenv_loaded_key_is_accepted_before_generation(self, tmp_path, monkeypatch):
+        dataset_path = tmp_path / "requirements.jsonl"
+        _write_dataset(dataset_path, ["REQ-001"])
+        config_path = _write_config(tmp_path, dataset_path)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+        key_calls: list[str] = []
+
+        def fake_get_key() -> str:
+            key_calls.append("called")
+            return "dotenv-key"
+
+        monkeypatch.setattr(generate.model_adapter, "_get_anthropic_api_key", fake_get_key)
+        monkeypatch.setattr(
+            generate.model_adapter,
+            "generate",
+            lambda *, requirement_id, **_: _output(requirement_id),
+        )
+
+        generated_dir, failures = generate.run(str(config_path), run_id="run_case")
+
+        assert failures == []
+        assert key_calls == ["called"]
+        assert (generated_dir / "REQ-001.json").exists()
+
+    def test_missing_key_from_model_adapter_fails_fast(self, tmp_path, monkeypatch):
+        dataset_path = tmp_path / "requirements.jsonl"
+        _write_dataset(dataset_path, ["REQ-001"])
+        config_path = _write_config(tmp_path, dataset_path)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+        def fake_get_key() -> str:
+            raise EnvironmentError("ANTHROPIC_API_KEY is not set")
+
+        monkeypatch.setattr(generate.model_adapter, "_get_anthropic_api_key", fake_get_key)
+
+        generate_called = {"value": False}
+
+        def fake_generate(**_: str) -> ModelOutput:
+            generate_called["value"] = True
+            return _output("REQ-001")
+
+        monkeypatch.setattr(generate.model_adapter, "generate", fake_generate)
+
+        with pytest.raises(EnvironmentError, match="ANTHROPIC_API_KEY is not set"):
+            generate.run(str(config_path), run_id="run_case")
+
+        assert generate_called["value"] is False
+
     def test_parse_failure_writes_marker_and_log(self, tmp_path, monkeypatch):
         dataset_path = tmp_path / "requirements.jsonl"
         _write_dataset(dataset_path, ["REQ-001", "REQ-002"])
