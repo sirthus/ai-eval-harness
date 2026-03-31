@@ -107,14 +107,14 @@ Each adjudicated record can also include:
 - `reviewed_at`
 - `reviewer_notes`
 
-## What This Workflow Demonstrates
+## Design Properties
 
-From an engineering perspective, this review layer shows that the repo:
+The review layer is designed to:
 
-- models uncertainty explicitly
-- separates automation from human judgment cleanly
-- preserves a readable audit trail
-- gives reports a practical “what now?” path when automation is not decisive
+- model uncertainty explicitly rather than collapsing borderline results into a pass or fail
+- keep automation and human judgment cleanly separated with distinct artifact paths
+- preserve a readable audit trail at every stage
+- give reports a practical “what now?” path when auto-scoring is not decisive
 
 ## Run Integrity Rules
 

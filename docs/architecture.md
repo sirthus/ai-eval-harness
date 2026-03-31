@@ -100,18 +100,15 @@ The repo has three levels of reporting:
 
 Comparison reporting is only meaningful when both runs use the same dataset version. Trend reporting keeps auto-scored math stable even when human-review annotations are present, which avoids mixing adjudicated context into the historical baseline.
 
-## Design Choices That Shape The Repo
+## Design Choices
 
-- Small datasets by design: the project demonstrates evaluation discipline, not scale for its own sake.
-- Persist everything important: generation, scoring, review, and manifests are all inspectable after the run.
-- Separate artifacts by role: generated outputs, scored outputs, reviews, and reports each live in a distinct path.
-- Keep the CLI thin: the business logic lives in modules that can be tested independently.
+- **Small datasets by design**: the harness demonstrates evaluation discipline, not scale for its own sake.
+- **Persist everything important**: generation, scoring, review, and manifests are all inspectable after the run.
+- **Separate artifacts by role**: generated outputs, scored outputs, reviews, and reports each live in a distinct path.
+- **Keep the CLI thin**: business logic lives in independently testable modules; the CLI only dispatches and formats.
 
-## Why This Architecture Matters
+## Architectural Rationale
 
-This architecture makes a few priorities explicit:
-
-- the repo models ambiguity instead of hiding it
-- it treats evaluation as a system design problem
-- it shows traceability, not just output formatting
-- it balances automation with explicit human review where confidence is lower
+- ambiguity is modeled explicitly rather than collapsed into a single pass/fail
+- evaluation is treated as a system design problem, with artifact lifecycle and traceability as first-class concerns
+- automation and human review are kept clearly separated so it is always obvious which conclusions came from which source

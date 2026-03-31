@@ -126,11 +126,11 @@ What to notice:
 - human review is additive, not a rewrite of the auto-scored run
 - the repo makes it easy to see where human judgment changed the practical interpretation
 
-## Why These Examples Matter
+## How to Read These Outputs
 
-The reporting layer is where the repository becomes more than a generator demo. These outputs show that the project can:
+The reporting layer turns run artifacts into decision-support outputs. Across the three report types, the harness:
 
-- preserve experiment history
-- support prompt and model comparison
-- surface uncertainty explicitly
-- present results in a form that a reviewer or teammate can act on
+- preserves experiment history in a comparable, machine-readable form
+- surfaces regressions and improvements when prompts or models change
+- exposes persistent uncertainty rather than forcing a single aggregate conclusion
+- produces output a reviewer or teammate can act on directly

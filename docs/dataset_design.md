@@ -4,9 +4,9 @@ Related docs: [README](../README.md), [Architecture](architecture.md), [Review W
 
 ## Why The Dataset Exists
 
-The dataset is intentionally small enough to inspect and rich enough to make evaluation interesting.
+The dataset is intentionally small enough to inspect end-to-end and rich enough to make scoring and review do meaningful work.
 
-This repo is not trying to prove scale. It is trying to prove that an LLM evaluation harness can:
+The goal is a harness that can:
 
 - measure structured QA-test generation against explicit expectations
 - distinguish strong outputs from merely plausible ones

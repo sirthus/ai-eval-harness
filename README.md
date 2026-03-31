@@ -2,9 +2,7 @@
 
 A Python evaluation harness that measures whether an LLM can turn requirement snippets into useful QA test cases, using schema validation, rubric-based scoring, human review, and repeatable reporting.
 
-Status: implemented as a working evaluation harness with generation, scoring, review, comparison, trend reporting, and optional charts.
-
-Current scope:
+Implemented through Phase 3. The current system includes:
 
 - structured test-case generation through Anthropic models
 - heuristic scoring and optional LLM-as-judge scoring
@@ -16,18 +14,13 @@ The core question this project answers is:
 
 > Is this model and prompt combination reliable enough to assist QA test design, and where does it still require human review?
 
-Why that matters:
+This is an evaluation problem, not a generation problem. Every run produces auditable artifacts, explicit pass/fail/review outcomes, and experiment history — not a single anecdotal headline score.
 
-- many LLM demos stop at generation quality by anecdote
-- this repo turns model output into auditable artifacts, explicit pass/fail/review outcomes, and experiment history
-- it demonstrates evaluation design, not just prompt iteration
+## Evaluation Design
 
-## What This Repo Demonstrates
-
-- evaluation design for LLM outputs instead of treating raw generations as success
 - schema-first generation and validation for structured QA artifacts
 - rubric-based scoring with weighted dimensions and floor rules
-- human-in-the-loop review for borderline cases rather than over-automating judgment
+- human-in-the-loop review for borderline cases
 - experiment traceability through run IDs, manifests, persisted scorer choice, and quality gates
 - side-by-side comparison and trend reporting across prompt or model variants
 
@@ -122,9 +115,9 @@ Available subcommands:
 5. Read [docs/dataset_design.md](docs/dataset_design.md) and [docs/review_workflow.md](docs/review_workflow.md) for the dataset and human-review details.
 6. Read [docs/history/README.md](docs/history/README.md) only if you want the implementation-history planning documents.
 
-## Why The Outputs Are Credible
+## Audit Trail
 
-This repo is designed to leave an audit trail instead of a single headline number.
+Each run writes a full set of inspectable artifacts rather than a single headline number.
 
 - valid generations are written as `{requirement_id}.json`
 - parse or schema failures are written as `{requirement_id}.fail.json` and aggregated in `parse_failures.jsonl`
@@ -135,15 +128,9 @@ This repo is designed to leave an audit trail instead of a single headline numbe
 
 That separation is intentional: automated artifacts stay immutable, while human review remains an overlay.
 
-## Repository Highlights
-
-- [docs/assets/report_outputs.svg](docs/assets/report_outputs.svg) shows the kinds of outputs the reporting layer is designed to produce.
-- [docs/architecture.md](docs/architecture.md) explains how generation, scoring, review, and reporting connect.
-- [docs/report_examples.md](docs/report_examples.md) walks through what to look for in per-run, compare, and trend reports.
-
 ## Deliberate Boundaries
 
-This repo is intentionally narrow so the evaluation problem stays crisp and inspectable.
+The scope is intentionally narrow:
 
 - no UI or dashboard product layer
 - no RAG or vector search
@@ -151,7 +138,7 @@ This repo is intentionally narrow so the evaluation problem stays crisp and insp
 - no attempt to treat raw model output as ground truth
 - no large-scale distributed evaluation infrastructure
 
-Those omissions are design choices, not missing polish. The goal is to demonstrate disciplined evaluation harness design, not to present a full QA platform.
+Those are design choices that keep the evaluation problem crisp and inspectable, not missing polish.
 
 ## Historical Design Records
 

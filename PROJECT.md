@@ -35,15 +35,15 @@ This design keeps each concern narrow:
 | Run-level quality gates | Turns report findings into an operational recommendation artifact |
 | Same-dataset comparison rule | Prevents misleading deltas between runs evaluated on different ground truth |
 
-## Why This Design Matters
+## Design Rationale
 
-This repo emphasizes:
+The design prioritizes:
 
-- evaluation thinking rather than prompt-only iteration
+- evaluation thinking over prompt-only iteration
 - careful data and artifact modeling
 - human-in-the-loop workflow design
 - traceability and experiment hygiene
-- concise CLI tooling around a composable core
+- a thin CLI layer over a composable, testable core
 
 ## Current Boundaries
 
