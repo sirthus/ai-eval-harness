@@ -11,11 +11,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 
-import pytest
 
-from harness.evaluate import _write_scored_results
 from harness.report import write_report
 from harness.review_queue import write_queue
 from harness.schemas import (
@@ -148,7 +145,7 @@ class TestFullPipeline:
         if borderlines:
             queue_path = write_queue(results, run_id="run_integ_test", reviews_dir=str(tmp_path))
             assert queue_path.exists()
-            lines = [l for l in queue_path.read_text().splitlines() if l.strip()]
+            lines = [line for line in queue_path.read_text().splitlines() if line.strip()]
             assert len(lines) == len(borderlines)
 
     def test_write_report_produces_well_formed_markdown_and_csv(self, tmp_path):

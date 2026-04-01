@@ -5,7 +5,6 @@ Phase 2 note: score_correctness is now decoupled from coverage ratio.
   completeness still uses coverage ratio.
 """
 
-import pytest
 
 from harness.schemas import GoldAnnotation, ModelOutput, TestCase
 from harness.score import score

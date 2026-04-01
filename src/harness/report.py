@@ -12,8 +12,8 @@ import json
 import logging
 from pathlib import Path
 
-import yaml
-
+from harness.loaders import load_config
+from harness.paths import manifest_path as build_manifest_path
 from harness.review_queue import load_adjudicated
 from harness.schemas import ReviewRecord, RunManifest, ScoredResult
 
@@ -224,7 +224,6 @@ def _write_markdown(
     total = len(results)
     auto_decisions = [r.decision for r in results]
     auto_counts = _decision_counts(auto_decisions)
-    passes = [r for r in results if r.decision == "pass"]
     borderlines = [r for r in results if r.decision == "borderline"]
     fails = [r for r in results if r.decision == "fail"]
     has_adjudications = bool(adjudicated)
@@ -451,21 +450,20 @@ def main() -> None:
             "Run `python -m harness.evaluate --config ...` first."
         )
 
-    with open(args.config, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(args.config)
 
     raw = json.loads(results_path.read_text(encoding="utf-8"))
     results = [ScoredResult.model_validate(r) for r in raw]
 
     run_id = args.run_id or cfg["run_id"]
-    manifest_path = Path(cfg["runs_dir"]) / f"{run_id}.json"
-    if not manifest_path.exists():
+    mpath = build_manifest_path(cfg["runs_dir"], run_id)
+    if not mpath.exists():
         raise FileNotFoundError(
-            f"Run manifest not found at {manifest_path}. "
+            f"Run manifest not found at {mpath}. "
             "Run the full pipeline with `python -m harness.run_eval --config ...` first."
         )
     manifest = RunManifest.model_validate(
-        json.loads(manifest_path.read_text(encoding="utf-8"))
+        json.loads(mpath.read_text(encoding="utf-8"))
     )
 
     adjudicated = None

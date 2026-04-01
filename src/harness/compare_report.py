@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from harness.charts import inject_chart_markdown
+from harness.loaders import load_manifest, load_requirements, load_scored_results
 from harness.review_queue import load_adjudicated
 from harness.schemas import Requirement, ReviewRecord, RunManifest, ScoredResult
 
@@ -26,50 +27,6 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-def _inject_chart_markdown(md_content: str, chart_lines: list[str], marker: str) -> str:
-    """Insert chart markdown before marker, or append a fallback section."""
-    if not chart_lines:
-        return md_content
-
-    chart_block = "\n".join(["## Charts", "", *chart_lines, ""])
-    marker_index = md_content.find(marker)
-    if marker_index == -1:
-        logger.warning("Chart injection marker '%s' not found; appending charts to report end", marker)
-        trimmed = md_content.rstrip()
-        return f"{trimmed}\n\n{chart_block}"
-    return md_content[:marker_index] + chart_block + md_content[marker_index:]
-
-
-# ---------------------------------------------------------------------------
-# Data loading helpers
-# ---------------------------------------------------------------------------
-
-
-def _load_manifest(runs_dir: str, run_id: str) -> RunManifest:
-    path = Path(runs_dir) / f"{run_id}.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Run manifest not found: {path}")
-    return RunManifest.model_validate(json.loads(path.read_text(encoding="utf-8")))
-
-
-def _load_results(generated_dir: str, run_id: str) -> dict[str, ScoredResult]:
-    path = Path(generated_dir) / run_id / "scored_results.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Scored results not found: {path}")
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    return {r["requirement_id"]: ScoredResult.model_validate(r) for r in raw}
-
-
-def _load_requirements(dataset_path: str) -> list[Requirement]:
-    reqs = []
-    with open(dataset_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                reqs.append(Requirement.model_validate(json.loads(line)))
-    return reqs
 
 
 # ---------------------------------------------------------------------------
@@ -328,11 +285,11 @@ def run(
     charts: bool = False,
 ) -> tuple[Path, Path]:
     """Run comparison and write report files. Returns (md_path, csv_path)."""
-    manifest_a = _load_manifest(runs_dir, run_id_a)
-    manifest_b = _load_manifest(runs_dir, run_id_b)
-    results_a = _load_results(generated_dir, run_id_a)
-    results_b = _load_results(generated_dir, run_id_b)
-    requirements = _load_requirements(dataset_path)
+    manifest_a = load_manifest(runs_dir, run_id_a)
+    manifest_b = load_manifest(runs_dir, run_id_b)
+    results_a = load_scored_results(generated_dir, run_id_a)
+    results_b = load_scored_results(generated_dir, run_id_b)
+    requirements = load_requirements(dataset_path)
 
     adjudicated_a = load_adjudicated(run_id_a, reviews_dir) if use_human_review else None
     adjudicated_b = load_adjudicated(run_id_b, reviews_dir) if use_human_review else None
@@ -362,7 +319,7 @@ def run(
     )
 
     if chart_lines:
-        md_content = _inject_chart_markdown(md_content, chart_lines, "## Aggregate Delta")
+        md_content = inject_chart_markdown(md_content, chart_lines, "## Aggregate Delta")
 
     md_path = out_dir / f"compare_{run_id_a}_vs_{run_id_b}_{timestamp}.md"
     md_path.write_text(md_content, encoding="utf-8")

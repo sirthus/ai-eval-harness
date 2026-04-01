@@ -46,6 +46,11 @@ def _get_anthropic_api_key() -> str:
     return api_key
 
 
+def get_anthropic_client() -> anthropic.Anthropic:
+    """Create and return an Anthropic client using the configured API key."""
+    return anthropic.Anthropic(api_key=_get_anthropic_api_key())
+
+
 def extract_text_content(message: Any, requirement_id: str, source: str) -> str:
     """Return the first non-empty text block from an Anthropic response."""
     content_blocks = getattr(message, "content", None)
@@ -69,7 +74,7 @@ def _load_prompt(version: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _split_prompt(template: str) -> tuple[str, str]:
+def split_prompt(template: str) -> tuple[str, str]:
     """Split a prompt template on ### SYSTEM ### / ### USER ### markers.
 
     Returns (system_text, user_text). If markers are absent, returns ("", template)
@@ -93,16 +98,14 @@ def generate(
     Retries up to 3 times on transient API errors with exponential backoff.
     Raises ModelAPIError if all attempts fail.
     """
-    api_key = _get_anthropic_api_key()
-
     template = _load_prompt(prompt_version)
-    system_text, user_template = _split_prompt(template)
+    system_text, user_template = split_prompt(template)
     user_message = user_template.format(
         requirement_id=requirement_id,
         requirement_text=requirement_text,
     )
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = get_anthropic_client()
     logger.info("Generating output for %s with model %s", requirement_id, model_version)
 
     create_kwargs: dict = dict(

@@ -25,17 +25,20 @@ That design choice matters. Instead of producing a one-off score in memory, the 
 | Module | Responsibility |
 |---|---|
 | `generate.py` | Model invocation orchestration and output artifact writing |
+| `loaders.py` | Shared config, dataset, manifest, and scored-result loading helpers |
+| `paths.py` | Canonical artifact-path helpers for generated outputs and run manifests |
 | `model_adapter.py` | Anthropic client integration, prompt loading, retries, and response parsing |
 | `schemas.py` | Shared data contracts for datasets, outputs, scores, reviews, and manifests |
-| `score.py` | Heuristic scoring logic |
+| `score.py` | Heuristic scorer implementation and score computation |
+| `scoring.py` | Stable scorer interface shared by heuristic and judge scorers |
 | `llm_judge.py` | Optional scorer that uses a second model as a semantic judge |
-| `evaluate.py` | Gold loading, generated-output loading, scorer dispatch, and scored-result persistence |
+| `evaluate.py` | Gold loading, generated-output loading, config-driven scorer selection, and scored-result persistence |
 | `review_queue.py` | Borderline queue and adjudication persistence |
 | `review_cli.py` | Human adjudication workflow in the terminal |
 | `report.py` | Per-run reporting |
 | `compare_report.py` | Side-by-side comparison reporting |
 | `trend_report.py` | Multi-run historical reporting |
-| `run_eval.py` | Full-pipeline orchestration and run-manifest creation |
+| `run_eval.py` | Full-pipeline orchestration, review/report sequencing, and run-manifest creation |
 
 ## Persisted Artifacts
 
@@ -51,12 +54,16 @@ That design choice matters. Instead of producing a one-off score in memory, the 
 | `data/runs/{run_id}.json` | Run manifest and quality-gate summary |
 | `reports/*.md` and `reports/*.csv` | Human-readable per-run, compare, and trend outputs |
 
+Artifact locations are centralized through shared path helpers so the canonical layout stays consistent across pipeline steps.
+
 ## Scoring Model
 
 The harness supports two scorer modes:
 
 - `heuristic`: rule-based scoring against coverage points, floor thresholds, and structural signals
 - `llm-judge`: a second model evaluates semantic coverage and scoring rationales, with heuristic fallback on expected judge failures
+
+`evaluate.py` resolves scorer choice from config in both standalone and full-pipeline runs, and both scorer implementations share the same stable interface.
 
 Both modes converge on the same persisted `ScoredResult` shape so reporting and comparison stay stable.
 

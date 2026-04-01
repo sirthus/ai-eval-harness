@@ -21,8 +21,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from io import StringIO
-from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
@@ -161,14 +159,14 @@ def cmd_evaluate(args: argparse.Namespace, console: Console) -> None:
 
 def cmd_report(args: argparse.Namespace, console: Console) -> None:
     import json
-    import yaml
     from harness.evaluate import scored_results_path
+    from harness.loaders import load_config
+    from harness.paths import manifest_path as build_manifest_path
     from harness.report import write_report
     from harness.review_queue import load_adjudicated
     from harness.schemas import RunManifest, ScoredResult
 
-    with open(args.config, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(args.config)
 
     run_id = getattr(args, "run_id", None) or cfg["run_id"]
     results_path = scored_results_path(args.config, run_id=run_id)
@@ -177,11 +175,11 @@ def cmd_report(args: argparse.Namespace, console: Console) -> None:
         sys.exit(1)
 
     results = [ScoredResult.model_validate(r) for r in json.loads(results_path.read_text(encoding="utf-8"))]
-    manifest_path = Path(cfg["runs_dir"]) / f"{run_id}.json"
-    if not manifest_path.exists():
-        console.print(f"[red]Run manifest not found: {manifest_path}[/red]")
+    mpath = build_manifest_path(cfg["runs_dir"], run_id)
+    if not mpath.exists():
+        console.print(f"[red]Run manifest not found: {mpath}[/red]")
         sys.exit(1)
-    manifest = RunManifest.model_validate(json.loads(manifest_path.read_text(encoding="utf-8")))
+    manifest = RunManifest.model_validate(json.loads(mpath.read_text(encoding="utf-8")))
 
     adjudicated = None
     if getattr(args, "use_human_review", False):

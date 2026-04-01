@@ -27,12 +27,11 @@ from pydantic import ValidationError
 
 from harness import score as heuristic_scoring
 from harness.model_adapter import (
-    _get_anthropic_api_key,
-    _split_prompt,
+    get_anthropic_client,
+    split_prompt,
     extract_text_content,
 )
 from harness.schemas import (
-    CoveragePointAssessment,
     DimensionScores,
     GoldAnnotation,
     LLMJudgeVerdict,
@@ -99,8 +98,7 @@ class LLMJudgeScorer:
     def _get_client(self) -> anthropic.Anthropic:
         """Create and cache the Anthropic client for this scorer instance."""
         if self._client is None:
-            api_key = _get_anthropic_api_key()
-            self._client = anthropic.Anthropic(api_key=api_key)
+            self._client = get_anthropic_client()
         return self._client
 
     def _build_judge_prompt(self, output: ModelOutput, gold: GoldAnnotation) -> str:
@@ -138,7 +136,7 @@ class LLMJudgeScorer:
                 f"{requirement_id} must contain both ### SYSTEM ### and ### USER ### markers or neither"
             )
 
-        system_text, user_text = _split_prompt(prompt)
+        system_text, user_text = split_prompt(prompt)
         if has_system_marker and not user_text:
             raise LLMJudgeScorerError(
                 f"Judge prompt for {requirement_id} has an empty ### USER ### section"

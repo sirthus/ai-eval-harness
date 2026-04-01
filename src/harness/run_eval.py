@@ -24,12 +24,11 @@ import logging
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Callable, Literal
-
-import yaml
+from typing import Literal
 
 from harness import evaluate, generate, review_queue, report
+from harness.loaders import load_config
+from harness.paths import manifest_path as build_manifest_path
 from harness.schemas import RunManifest
 
 logging.basicConfig(
@@ -76,20 +75,6 @@ def _make_run_id(base: str, timestamp: datetime) -> str:
     return f"{base}_{stamp}"
 
 
-def _build_scorer(cfg: dict, run_id: str) -> Callable | None:
-    """Construct scorer from config. Returns None for the default heuristic scorer."""
-    scorer_type = cfg.get("scorer", "heuristic")
-    if scorer_type == "llm-judge":
-        from harness.llm_judge import LLMJudgeScorer
-        sidecar_dir = Path(cfg["generated_dir"]) / run_id
-        return LLMJudgeScorer(
-            judge_model=cfg.get("judge_model", cfg["model_version"]),
-            judge_prompt_version=cfg.get("judge_prompt_version", "judge_v1"),
-            sidecar_dir=sidecar_dir,
-        ).score
-    return None  # None → evaluate.run() uses heuristic default
-
-
 def _compute_quality_gate(
     pass_rate: float,
     borderlines: int,
@@ -109,9 +94,7 @@ def run(config_path: str) -> RunManifest:
     logger.info("=== Starting evaluation run ===")
     logger.info("Config: %s", config_path)
 
-    with open(config_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-
+    cfg = load_config(config_path)
     timestamp = datetime.now(timezone.utc)
     # Unique ID for this execution; config run_id is the series/version identifier.
     run_id = _make_run_id(cfg["run_id"], timestamp)
@@ -124,10 +107,9 @@ def run(config_path: str) -> RunManifest:
     logger.info("--- Step 1: Generate ---")
     _, parse_failure_ids = generate.run(config_path, run_id=run_id)
 
-    # Step 2: Evaluate (with optional LLM judge scorer)
+    # Step 2: Evaluate (scorer selected from config via evaluate.build_scorer)
     logger.info("--- Step 2: Evaluate ---")
-    scorer = _build_scorer(cfg, run_id)
-    results = evaluate.run(config_path, run_id=run_id, scorer=scorer)
+    results = evaluate.run(config_path, run_id=run_id)
 
     if not results and not parse_failure_ids:
         logger.error("No results produced — check generated outputs.")
@@ -187,11 +169,10 @@ def run(config_path: str) -> RunManifest:
     report.write_report(results, manifest, cfg["reports_dir"])
 
     # Step 5: Save run manifest
-    runs_dir = Path(cfg["runs_dir"])
-    runs_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = runs_dir / f"{run_id}.json"
-    manifest_path.write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
-    logger.info("Run manifest saved: %s", manifest_path)
+    mpath = build_manifest_path(cfg["runs_dir"], run_id)
+    mpath.parent.mkdir(parents=True, exist_ok=True)
+    mpath.write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+    logger.info("Run manifest saved: %s", mpath)
 
     # Summary
     logger.info("=== Run complete: %s ===", run_id)

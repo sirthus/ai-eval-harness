@@ -182,8 +182,7 @@ class TestBuildJudgePrompt:
 
     def test_call_judge_rejects_partial_markers(self, mocker):
         mock_client = MagicMock()
-        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
-        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+        mocker.patch("harness.llm_judge.get_anthropic_client", return_value=mock_client)
 
         scorer = LLMJudgeScorer()
 
@@ -194,8 +193,7 @@ class TestBuildJudgePrompt:
 
     def test_call_judge_rejects_empty_user_section(self, mocker):
         mock_client = MagicMock()
-        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
-        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+        mocker.patch("harness.llm_judge.get_anthropic_client", return_value=mock_client)
 
         scorer = LLMJudgeScorer()
 
@@ -209,8 +207,7 @@ class TestBuildJudgePrompt:
         mock_message.content = []
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_message
-        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
-        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+        mocker.patch("harness.llm_judge.get_anthropic_client", return_value=mock_client)
 
         scorer = LLMJudgeScorer()
 
@@ -222,8 +219,7 @@ class TestBuildJudgePrompt:
         mock_message.content = [type("Block", (), {"type": "tool_use"})()]
         mock_client = MagicMock()
         mock_client.messages.create.return_value = mock_message
-        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
-        mocker.patch("harness.llm_judge._get_anthropic_api_key", return_value="test-key")
+        mocker.patch("harness.llm_judge.get_anthropic_client", return_value=mock_client)
 
         scorer = LLMJudgeScorer()
 

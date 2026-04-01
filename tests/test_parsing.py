@@ -7,12 +7,11 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
-from harness.model_adapter import _parse_output, _split_prompt
+from harness.model_adapter import _parse_output, split_prompt
 from harness.schemas import (
     GoldAnnotation,
     ModelOutput,
     Requirement,
-    RunManifest,
     TestCase,
 )
 
@@ -25,26 +24,26 @@ from harness.schemas import (
 class TestSplitPrompt:
     def test_splits_system_and_user_sections(self):
         template = "### SYSTEM ###\nYou are an assistant.\n### USER ###\nHello {name}."
-        system, user = _split_prompt(template)
+        system, user = split_prompt(template)
         assert system == "You are an assistant."
         assert user == "Hello {name}."
 
     def test_no_markers_returns_flat_as_user(self):
         template = "Just a flat prompt with {placeholder}."
-        system, user = _split_prompt(template)
+        system, user = split_prompt(template)
         assert system == ""
         assert user == template
 
     def test_marker_lines_stripped_from_output(self):
         template = "### SYSTEM ###\nsystem content\n### USER ###\nuser content"
-        system, user = _split_prompt(template)
+        system, user = split_prompt(template)
         assert "### SYSTEM ###" not in system
         assert "### USER ###" not in user
         assert "### SYSTEM ###" not in user
 
     def test_multiline_sections_preserved(self):
         template = "### SYSTEM ###\nLine one.\nLine two.\n### USER ###\nReq: {req}\nText: {text}"
-        system, user = _split_prompt(template)
+        system, user = split_prompt(template)
         assert "Line one." in system
         assert "Line two." in system
         assert "Req: {req}" in user
