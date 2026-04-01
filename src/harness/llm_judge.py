@@ -32,7 +32,6 @@ from harness.model_adapter import (
     extract_text_content,
 )
 from harness.schemas import (
-    CoveragePointAssessment,
     DimensionScores,
     GoldAnnotation,
     LLMJudgeVerdict,

@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import pytest
 
 from harness.review_cli import adjudicate, _load_model_output, _load_scored_result
 from harness.review_queue import load_queue, write_queue
@@ -222,7 +220,7 @@ class TestAdjudicatedFile:
         records[0].review_decision = "pass"
 
         path = write_adjudicated(records, run_id="run_adj_test", reviews_dir=str(tmp_path))
-        lines = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+        lines = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
         # Only the decided one should be written
         assert len(lines) == 1
         assert lines[0]["requirement_id"] == "REQ-001"

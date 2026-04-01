@@ -10,7 +10,7 @@ import json
 import logging
 from pathlib import Path
 
-from harness.schemas import DimensionScores, ReviewRecord, ScoredResult
+from harness.schemas import ReviewRecord, ScoredResult
 
 logger = logging.getLogger(__name__)
 

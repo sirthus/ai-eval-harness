@@ -25,7 +25,7 @@ from pathlib import Path
 from harness.charts import inject_chart_markdown
 from harness.loaders import load_requirements, load_scored_results
 from harness.review_queue import load_adjudicated
-from harness.schemas import Requirement, RunManifest, RunSummary, ScoredResult, TrendReport
+from harness.schemas import Requirement, RunManifest, RunSummary, TrendReport
 
 logging.basicConfig(
     level=logging.INFO,

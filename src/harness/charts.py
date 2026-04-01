@@ -36,7 +36,6 @@ try:
     import matplotlib
     matplotlib.use("Agg")
     from matplotlib import pyplot as plt
-    from matplotlib.figure import Figure
     _MATPLOTLIB_AVAILABLE = True
 except ImportError:
     _MATPLOTLIB_AVAILABLE = False
@@ -311,7 +310,6 @@ def plot_domain_heatmap(
     if not domain_data or not run_ids:
         return None
 
-    import numpy as np
 
     domains = sorted(domain_data)
     matrix = [

@@ -24,7 +24,6 @@ import logging
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal
 
 from harness import evaluate, generate, review_queue, report

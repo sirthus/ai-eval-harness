@@ -12,7 +12,6 @@ from harness.schemas import (
     GoldAnnotation,
     ModelOutput,
     Requirement,
-    RunManifest,
     TestCase,
 )
 

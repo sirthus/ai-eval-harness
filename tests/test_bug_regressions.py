@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from harness.score import HeuristicScorer
-from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult, TestCase
+from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult
 from harness.run_eval import _compute_quality_gate
 from tests.factories import make_run_manifest, make_scored_result
 
@@ -308,7 +308,6 @@ class TestResolveScorer:
 
     def test_bare_function_is_accepted(self, tmp_path):
         from harness.evaluate import _resolve_scorer
-        from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult, DimensionScores
 
         def my_scorer(output, gold, weights=None, thresholds=None, diagnostics=None):
             return make_scored_result()
@@ -330,7 +329,6 @@ class TestResolveScorer:
         """An object that is both callable AND implements Scorer returns .score, not __call__."""
         from typing import Any
         from harness.evaluate import _resolve_scorer
-        from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult
 
         sentinel_call = object()
         sentinel_score = object()

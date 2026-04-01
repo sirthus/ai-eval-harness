@@ -224,7 +224,6 @@ def _write_markdown(
     total = len(results)
     auto_decisions = [r.decision for r in results]
     auto_counts = _decision_counts(auto_decisions)
-    passes = [r for r in results if r.decision == "pass"]
     borderlines = [r for r in results if r.decision == "borderline"]
     fails = [r for r in results if r.decision == "fail"]
     has_adjudications = bool(adjudicated)
