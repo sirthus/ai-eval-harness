@@ -16,10 +16,9 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
 from harness import model_adapter
-from harness.schemas import Requirement
+from harness.loaders import load_config, load_requirements
+from harness.paths import ArtifactPaths
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,25 +36,24 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
     run_id overrides the config's run_id when provided (used by run_eval.py
     to write outputs under a timestamped directory).
     """
-    with open(config_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(config_path)
 
     effective_run_id = run_id or cfg["run_id"]
     model_version: str = cfg["model_version"]
     prompt_version: str = cfg["prompt_version"]
     dataset_path: str = cfg["dataset_path"]
-    generated_dir = Path(cfg["generated_dir"]) / effective_run_id
-    generated_dir.mkdir(parents=True, exist_ok=True)
+    paths = ArtifactPaths(cfg["generated_dir"], effective_run_id)
+    paths.run_dir.mkdir(parents=True, exist_ok=True)
 
-    requirements = _load_requirements(dataset_path)
+    requirements = load_requirements(dataset_path)
     logger.info("Loaded %d requirements from %s", len(requirements), dataset_path)
 
-    model_adapter._get_anthropic_api_key()
+    model_adapter.get_anthropic_client()
 
     parse_failures: list[str] = []
     for req in requirements:
-        out_path = generated_dir / f"{req.requirement_id}.json"
-        failure_marker = generated_dir / f"{req.requirement_id}.fail.json"
+        out_path = paths.output_file(req.requirement_id)
+        failure_marker = paths.failure_marker(req.requirement_id)
         if out_path.exists():
             logger.info("Skipping %s (already generated)", req.requirement_id)
             continue
@@ -78,7 +76,7 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
         except ValueError as exc:
             logger.error("Parse/schema failure for %s: %s", req.requirement_id, exc)
             parse_failures.append(req.requirement_id)
-            _write_failure_record(generated_dir, req.requirement_id, str(exc))
+            _write_failure_record(paths.run_dir, req.requirement_id, str(exc))
         except Exception as exc:
             logger.error(
                 "Generation aborted on %s (%s): %s",
@@ -95,7 +93,7 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
             parse_failures,
         )
 
-    return generated_dir, parse_failures
+    return paths.run_dir, parse_failures
 
 
 def _write_failure_record(
@@ -113,16 +111,6 @@ def _write_failure_record(
     failures_log = generated_dir / _FAILURES_FILE
     with open(failures_log, "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
-
-
-def _load_requirements(path: str) -> list[Requirement]:
-    reqs = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                reqs.append(Requirement.model_validate(json.loads(line)))
-    return reqs
 
 
 def main() -> None:

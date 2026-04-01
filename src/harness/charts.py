@@ -17,6 +17,21 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
+def inject_chart_markdown(md_content: str, chart_lines: list[str], marker: str) -> str:
+    """Insert chart markdown before marker, or append a fallback section."""
+    if not chart_lines:
+        return md_content
+
+    chart_block = "\n".join(["## Charts", "", *chart_lines, ""])
+    marker_index = md_content.find(marker)
+    if marker_index == -1:
+        logger.warning("Chart injection marker '%s' not found; appending charts to report end", marker)
+        trimmed = md_content.rstrip()
+        return f"{trimmed}\n\n{chart_block}"
+    return md_content[:marker_index] + chart_block + md_content[marker_index:]
+
+
 try:
     import matplotlib
     matplotlib.use("Agg")

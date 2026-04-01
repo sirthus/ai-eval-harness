@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from harness.charts import inject_chart_markdown
 from harness.trend_report import (
-    _inject_chart_markdown,
     build_trend_data,
     consistently_borderline_requirements,
     domain_pass_rates,
@@ -259,7 +259,7 @@ class TestDomainPassRates:
 class TestChartInjection:
     def test_injects_before_marker_when_present(self):
         md = "# Trend\n\n## Runs Included\n\nBody\n"
-        updated = _inject_chart_markdown(
+        updated = inject_chart_markdown(
             md,
             ["![Pass Rate Over Time](trend.png)"],
             "## Runs Included",
@@ -270,7 +270,7 @@ class TestChartInjection:
     def test_appends_fallback_section_when_marker_missing(self, caplog):
         md = "# Trend\n\nNo expected section.\n"
         with caplog.at_level("WARNING"):
-            updated = _inject_chart_markdown(
+            updated = inject_chart_markdown(
                 md,
                 ["![Pass Rate Over Time](trend.png)"],
                 "## Runs Included",

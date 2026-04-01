@@ -16,8 +16,9 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
+from harness.loaders import load_config
+from harness.paths import ArtifactPaths
+from harness.paths import manifest_path as build_manifest_path
 from harness.review_queue import load_queue, write_adjudicated
 from harness.schemas import GoldAnnotation, ModelOutput, ReviewRecord, RunManifest, ScoredResult
 
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 def _load_model_output(
     generated_dir: str, run_id: str, requirement_id: str
 ) -> ModelOutput | None:
-    path = Path(generated_dir) / run_id / f"{requirement_id}.json"
+    path = ArtifactPaths(generated_dir, run_id).output_file(requirement_id)
     if not path.exists():
         return None
     return ModelOutput.model_validate(json.loads(path.read_text(encoding="utf-8")))
@@ -45,7 +46,7 @@ def _load_model_output(
 def _load_scored_result(
     generated_dir: str, run_id: str, requirement_id: str
 ) -> ScoredResult | None:
-    results_path = Path(generated_dir) / run_id / "scored_results.json"
+    results_path = ArtifactPaths(generated_dir, run_id).scored_results
     if not results_path.exists():
         return None
     results = json.loads(results_path.read_text(encoding="utf-8"))
@@ -91,20 +92,20 @@ def _resolve_gold_path(gold_path: str | None, run_id: str, runs_dir: str) -> Pat
             raise FileNotFoundError(f"Gold annotations not found: {resolved}")
         return resolved
 
-    manifest_path = Path(runs_dir) / f"{run_id}.json"
-    if not manifest_path.exists():
+    mpath = build_manifest_path(runs_dir, run_id)
+    if not mpath.exists():
         raise FileNotFoundError(
             "Gold annotations could not be resolved automatically: "
-            f"run manifest not found at {manifest_path}. "
+            f"run manifest not found at {mpath}. "
             "Pass --gold-path explicitly or run the full pipeline first."
         )
 
     manifest = RunManifest.model_validate(
-        json.loads(manifest_path.read_text(encoding="utf-8"))
+        json.loads(mpath.read_text(encoding="utf-8"))
     )
     config_path = Path(manifest.config_file)
     if not config_path.exists() and not config_path.is_absolute():
-        config_path = manifest_path.parent.parent.parent / manifest.config_file
+        config_path = mpath.parent.parent.parent / manifest.config_file
     if not config_path.exists():
         raise FileNotFoundError(
             "Gold annotations could not be resolved automatically: "
@@ -112,8 +113,7 @@ def _resolve_gold_path(gold_path: str | None, run_id: str, runs_dir: str) -> Pat
             "Pass --gold-path explicitly."
         )
 
-    with open(config_path, encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
+    config = load_config(config_path) or {}
 
     config_gold = config.get("gold_path")
     if not config_gold:

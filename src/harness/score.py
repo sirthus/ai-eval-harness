@@ -293,3 +293,17 @@ def score(
         scoring_notes=notes,
         diagnostic_notes=diagnostic_notes,
     )
+
+
+class HeuristicScorer:
+    """Thin wrapper implementing the Scorer protocol over the heuristic score() function."""
+
+    def score(
+        self,
+        output: ModelOutput,
+        gold: GoldAnnotation,
+        weights: dict[str, float] | None = None,
+        thresholds: dict[str, Any] | None = None,
+        diagnostics: dict[str, bool] | None = None,
+    ) -> ScoredResult:
+        return score(output, gold, weights=weights, thresholds=thresholds, diagnostics=diagnostics)

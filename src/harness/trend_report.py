@@ -22,6 +22,8 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from harness.charts import inject_chart_markdown
+from harness.loaders import load_requirements, load_scored_results
 from harness.review_queue import load_adjudicated
 from harness.schemas import Requirement, RunManifest, RunSummary, ScoredResult, TrendReport
 
@@ -43,20 +45,6 @@ def _quality_gate_label(decision: str) -> str:
     return labels.get(decision, "~ Needs review")
 
 
-def _inject_chart_markdown(md_content: str, chart_lines: list[str], marker: str) -> str:
-    """Insert chart markdown before marker, or append a fallback section."""
-    if not chart_lines:
-        return md_content
-
-    chart_block = "\n".join(["## Charts", "", *chart_lines, ""])
-    marker_index = md_content.find(marker)
-    if marker_index == -1:
-        logger.warning("Chart injection marker '%s' not found; appending charts to report end", marker)
-        trimmed = md_content.rstrip()
-        return f"{trimmed}\n\n{chart_block}"
-    return md_content[:marker_index] + chart_block + md_content[marker_index:]
-
-
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
@@ -70,25 +58,6 @@ def _load_all_manifests(runs_dir: str) -> list[RunManifest]:
         except Exception as e:
             logger.warning("Could not load manifest %s: %s", path, e)
     return manifests
-
-
-def _load_results_for_run(generated_dir: str, run_id: str) -> dict[str, ScoredResult]:
-    path = Path(generated_dir) / run_id / "scored_results.json"
-    if not path.exists():
-        logger.warning("scored_results.json not found for run %s", run_id)
-        return {}
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    return {r["requirement_id"]: ScoredResult.model_validate(r) for r in raw}
-
-
-def _load_requirements(dataset_path: str) -> list[Requirement]:
-    reqs = []
-    with open(dataset_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                reqs.append(Requirement.model_validate(json.loads(line)))
-    return reqs
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +153,7 @@ def build_trend_data(
     req_ids_in_dataset = {r.requirement_id for r in requirements} if requirements else set()
 
     for manifest in filtered:
-        results = _load_results_for_run(generated_dir, manifest.run_id)
+        results = load_scored_results(generated_dir, manifest.run_id, raise_on_missing=False)
         adj = load_adjudicated(manifest.run_id, reviews_dir) if use_human_review else {}
 
         for req_id, result in results.items():
@@ -387,7 +356,7 @@ def run(
 ) -> tuple[Path, Path]:
     """Build and write trend report. Returns (md_path, csv_path)."""
     manifests = _load_all_manifests(runs_dir)
-    requirements = _load_requirements(dataset_path)
+    requirements = load_requirements(dataset_path)
 
     mixed_mode = filter_dataset == "all"
     effective_filter = filter_dataset
@@ -437,7 +406,7 @@ def run(
             chart_lines.append(f"![Domain Pass Rates]({heatmap_path.name})")
 
     if chart_lines:
-        md_content = _inject_chart_markdown(md_content, chart_lines, "## Runs Included")
+        md_content = inject_chart_markdown(md_content, chart_lines, "## Runs Included")
 
     md_path = out_dir / f"trend_{timestamp}.md"
     md_path.write_text(md_content, encoding="utf-8")

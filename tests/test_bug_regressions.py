@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from harness.score import HeuristicScorer
 from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult, TestCase
 from harness.run_eval import _compute_quality_gate
 from tests.factories import make_run_manifest, make_scored_result
@@ -197,6 +198,18 @@ class TestEvaluateStepHonoursScorer:
         results = evaluate.run(str(cfg_path))
         assert len(results) == 1
 
+    def test_explicit_heuristic_scorer_object_is_accepted(self, tmp_path):
+        """evaluate.run() accepts scorer objects, not just bare callables."""
+        cfg_path = self._write_config(tmp_path, scorer="heuristic")
+        self._write_generated_output(tmp_path)
+
+        from harness import evaluate
+
+        results = evaluate.run(str(cfg_path), scorer=HeuristicScorer())
+
+        assert len(results) == 1
+        assert results[0].requirement_id == "REQ-001"
+
     def test_llm_judge_scorer_constructed_when_config_specifies_it(self, tmp_path, mocker):
         """When scorer=llm-judge in config, evaluate.run() builds and uses LLMJudgeScorer."""
         cfg_path = self._write_config(tmp_path, scorer="llm-judge")
@@ -280,6 +293,74 @@ class TestTrendChartFilenames:
         path = plot_trend_pass_rate(trend_data, tmp_path)
         assert path is not None
         assert path.name == "trend_pass_rate.png"
+
+
+class TestResolveScorer:
+    """Tests for evaluate._resolve_scorer() ordering and protocol-vs-callable precedence."""
+
+    def _make_cfg(self, tmp_path: Path) -> dict:
+        return {
+            "run_id": "run_test",
+            "model_version": "claude-sonnet-4-6",
+            "generated_dir": str(tmp_path / "generated"),
+            "scorer": "heuristic",
+        }
+
+    def test_bare_function_is_accepted(self, tmp_path):
+        from harness.evaluate import _resolve_scorer
+        from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult, DimensionScores
+
+        def my_scorer(output, gold, weights=None, thresholds=None, diagnostics=None):
+            return make_scored_result()
+
+        result = _resolve_scorer(my_scorer, self._make_cfg(tmp_path), "run_test")
+        assert result is my_scorer
+
+    def test_scorer_protocol_object_returns_score_method(self, tmp_path):
+        from harness.evaluate import _resolve_scorer
+
+        result = _resolve_scorer(HeuristicScorer(), self._make_cfg(tmp_path), "run_test")
+        assert result is HeuristicScorer().score.__func__ or callable(result)
+        # Key invariant: returned callable is the .score method, not __call__
+        scorer = HeuristicScorer()
+        resolved = _resolve_scorer(scorer, self._make_cfg(tmp_path), "run_test")
+        assert resolved == scorer.score
+
+    def test_protocol_check_takes_precedence_over_callable(self, tmp_path):
+        """An object that is both callable AND implements Scorer returns .score, not __call__."""
+        from typing import Any
+        from harness.evaluate import _resolve_scorer
+        from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult
+
+        sentinel_call = object()
+        sentinel_score = object()
+
+        class DualScorer:
+            def __call__(self):
+                return sentinel_call
+
+            def score(
+                self,
+                output: ModelOutput,
+                gold: GoldAnnotation,
+                weights: dict[str, float] | None = None,
+                thresholds: dict[str, Any] | None = None,
+                diagnostics: dict[str, bool] | None = None,
+            ) -> ScoredResult:
+                return sentinel_score
+
+        dual = DualScorer()
+        resolved = _resolve_scorer(dual, self._make_cfg(tmp_path), "run_test")
+        assert resolved == dual.score
+
+    def test_none_falls_through_to_build_scorer(self, tmp_path):
+        from harness.evaluate import _resolve_scorer, build_scorer
+
+        cfg = self._make_cfg(tmp_path)
+        resolved = _resolve_scorer(None, cfg, "run_test")
+        expected = build_scorer(cfg, "run_test")
+        # Both should be the heuristic scoring.score function
+        assert resolved.__name__ == expected.__name__
 
 
 class TestCompareChartFilenames:

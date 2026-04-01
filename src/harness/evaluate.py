@@ -13,12 +13,13 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Callable
-
-import yaml
+from typing import Any, Callable, TypeAlias
 
 from harness import score as scoring
+from harness.loaders import load_config
+from harness.paths import ArtifactPaths
 from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult
+from harness.scoring import Scorer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,41 +29,74 @@ logger = logging.getLogger(__name__)
 
 SCORED_RESULTS_FILE = "scored_results.json"
 
+ScoreCallable: TypeAlias = Callable[
+    [
+        ModelOutput,
+        GoldAnnotation,
+        dict[str, float] | None,
+        dict[str, Any] | None,
+        dict[str, bool] | None,
+    ],
+    ScoredResult,
+]
+
+
+def build_scorer(cfg: dict, run_id: str) -> ScoreCallable:
+    """Construct the scorer callable from config.
+
+    Returns the heuristic score function by default, or an LLMJudgeScorer.score
+    method when cfg["scorer"] == "llm-judge".
+    """
+    if cfg.get("scorer") == "llm-judge":
+        from harness.llm_judge import LLMJudgeScorer
+        sidecar_dir = ArtifactPaths(cfg["generated_dir"], run_id).run_dir
+        return LLMJudgeScorer(
+            judge_model=cfg.get("judge_model", cfg["model_version"]),
+            judge_prompt_version=cfg.get("judge_prompt_version", "judge_v1"),
+            sidecar_dir=sidecar_dir,
+        ).score
+    return scoring.score
+
+
+def _resolve_scorer(
+    scorer: Scorer | ScoreCallable | None,
+    cfg: dict,
+    run_id: str,
+) -> ScoreCallable:
+    """Normalize scorer injection to a callable score function."""
+    if scorer is None:
+        return build_scorer(cfg, run_id)
+    if isinstance(scorer, Scorer):
+        return scorer.score
+    if callable(scorer):
+        return scorer
+    raise TypeError("scorer must be a callable or implement .score(...)")
+
 
 def run(
     config_path: str,
     run_id: str | None = None,
-    scorer: Callable | None = None,
+    scorer: Scorer | ScoreCallable | None = None,
 ) -> list[ScoredResult]:
     """Score all generated outputs. Returns list of ScoredResult.
 
     run_id overrides the config's run_id when provided.
-    scorer is an optional callable with the same signature as score.score().
-    When None, the default heuristic scorer is used.
+    scorer may be either a plain callable (legacy API) or an object with a
+    score() method implementing the Scorer protocol. When None,
+    build_scorer() selects the scorer from config.
     Writes scored_results.json to the generated run directory.
     """
-    with open(config_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(config_path)
 
     effective_run_id = run_id or cfg["run_id"]
-    generated_dir = Path(cfg["generated_dir"]) / effective_run_id
+    generated_dir = ArtifactPaths(cfg["generated_dir"], effective_run_id).run_dir
     gold_path: str = cfg["gold_path"]
     thresholds: dict = cfg.get("thresholds", {})
     weights: dict = thresholds.get("weights")
 
     diagnostics: dict = cfg.get("diagnostics", {})
 
-    if scorer is not None:
-        score_fn = scorer
-    elif cfg.get("scorer") == "llm-judge":
-        from harness.llm_judge import LLMJudgeScorer
-        score_fn = LLMJudgeScorer(
-            judge_model=cfg.get("judge_model", cfg["model_version"]),
-            judge_prompt_version=cfg.get("judge_prompt_version", "judge_v1"),
-            sidecar_dir=generated_dir,
-        ).score
-    else:
-        score_fn = scoring.score
+    score_fn = _resolve_scorer(scorer, cfg, effective_run_id)
 
     gold_map = _load_gold(gold_path)
     outputs = _load_generated(generated_dir)
@@ -100,8 +134,7 @@ def _write_scored_results(results: list[ScoredResult], directory: Path) -> None:
 
 def scored_results_path(config_path: str, run_id: str | None = None) -> Path:
     """Return the canonical path to scored_results.json for a given run."""
-    with open(config_path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+    cfg = load_config(config_path)
     effective_run_id = run_id or cfg["run_id"]
     return Path(cfg["generated_dir"]) / effective_run_id / SCORED_RESULTS_FILE
 
