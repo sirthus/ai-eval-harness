@@ -6,8 +6,8 @@ Phase 2 note: score_correctness is now decoupled from coverage ratio.
 """
 
 
+from harness.heuristic_scorer import score
 from harness.schemas import GoldAnnotation, ModelOutput, TestCase
-from harness.score import score
 
 # Default thresholds from CLAUDE.md:
 #   pass >= 1.6 (AND all floors >= 1)
@@ -250,17 +250,17 @@ class TestFloorViolations:
 
 class TestBoundaryValues:
     def test_coverage_exactly_0_5_gives_completeness_1(self):
-        from harness.score import score_completeness
+        from harness.heuristic_scorer import score_completeness
         assert score_completeness(0.50) == 1.0
 
     def test_coverage_just_below_0_5_gives_completeness_0(self):
-        from harness.score import score_completeness
+        from harness.heuristic_scorer import score_completeness
         assert score_completeness(0.499) == 0.0
 
     def test_coverage_exactly_0_75_gives_completeness_2(self):
-        from harness.score import score_completeness
+        from harness.heuristic_scorer import score_completeness
         assert score_completeness(0.75) == 2.0
 
     def test_coverage_just_below_0_75_gives_completeness_1(self):
-        from harness.score import score_completeness
+        from harness.heuristic_scorer import score_completeness
         assert score_completeness(0.74) == 1.0

@@ -1,0 +1,152 @@
+[
+  {
+    "requirement_id": "REQ-001",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 2.0
+    },
+    "weighted_score": 2.0,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-002",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 1.0
+    },
+    "weighted_score": 1.85,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-003",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 2.0
+    },
+    "weighted_score": 2.0,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-004",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 2.0
+    },
+    "weighted_score": 2.0,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-005",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 2.0
+    },
+    "weighted_score": 2.0,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-006",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 2.0
+    },
+    "weighted_score": 2.0,
+    "decision": "pass",
+    "coverage_ratio": 1.0,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-007",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 1.0
+    },
+    "weighted_score": 1.85,
+    "decision": "pass",
+    "coverage_ratio": 0.75,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-008",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 2.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 1.0
+    },
+    "weighted_score": 1.85,
+    "decision": "pass",
+    "coverage_ratio": 0.8,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-009",
+    "scores": {
+      "correctness": 1.5,
+      "completeness": 1.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 1.0
+    },
+    "weighted_score": 1.375,
+    "decision": "borderline",
+    "coverage_ratio": 0.6667,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  },
+  {
+    "requirement_id": "REQ-010",
+    "scores": {
+      "correctness": 2.0,
+      "completeness": 1.0,
+      "hallucination_risk": 2.0,
+      "reviewer_usefulness": 1.0
+    },
+    "weighted_score": 1.55,
+    "decision": "borderline",
+    "coverage_ratio": 0.6667,
+    "disallowed_hits": [],
+    "scoring_notes": "",
+    "diagnostic_notes": ""
+  }
+]

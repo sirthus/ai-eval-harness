@@ -29,7 +29,7 @@ This separation is deliberate. Review is an overlay, not a rewrite of the auto-s
 Run the CLI:
 
 ```bash
-python -m harness review --run-id run_v2_prompt_v2_20260402T130000Z
+harness review --run-id run_v2_prompt_v2_20260402T130000Z
 ```
 
 Optional flags:
@@ -75,9 +75,9 @@ After the session:
 The reporting commands support `--use-human-review`:
 
 ```bash
-python -m harness report --config configs/run_v2_prompt_v2.yaml --run-id <run_id> --use-human-review
-python -m harness compare --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl --use-human-review
-python -m harness trend --dataset-path data/requirements/mvp_dataset_v2.jsonl --use-human-review
+harness report  --config configs/run_v2_prompt_v2.yaml --run-id <run_id> --use-human-review
+harness compare --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl --use-human-review
+harness trend   --dataset-path data/requirements/mvp_dataset_v2.jsonl --use-human-review
 ```
 
 When enabled:

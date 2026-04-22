@@ -1,0 +1,42 @@
+{
+  "requirement_id": "REQ-002",
+  "test_cases": [
+    {
+      "title": "Login with incorrect password shows generic error message",
+      "preconditions": ["A registered user account exists with a known email"],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid email with an incorrect password",
+        "Click the Submit button"
+      ],
+      "expected_result": "A generic error message is displayed; the message does not indicate whether the email exists in the system",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Failed login attempt is recorded in the system log",
+      "preconditions": ["A registered user account exists"],
+      "steps": [
+        "Submit the login form with a valid email and incorrect password",
+        "Navigate to the audit or security log as an administrator"
+      ],
+      "expected_result": "The failed attempt is logged with the email, timestamp, and outcome",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Password field is cleared after a failed login",
+      "preconditions": ["User is on the login page"],
+      "steps": [
+        "Enter any email and an incorrect password",
+        "Click the Submit button",
+        "Observe the password input field"
+      ],
+      "expected_result": "The password field is cleared after the failed submission; the email field may remain populated",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Security-sensitive requirement. All three explicit outcomes (generic error, logging, cleared field) are each covered by a dedicated test case."
+}

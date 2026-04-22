@@ -25,11 +25,11 @@ from typing import Any
 import anthropic
 from pydantic import ValidationError
 
-from harness import score as heuristic_scoring
+from harness import heuristic_scorer as heuristic_scoring
 from harness.model_adapter import (
+    extract_text_content,
     get_anthropic_client,
     split_prompt,
-    extract_text_content,
 )
 from harness.schemas import (
     DimensionScores,
@@ -84,7 +84,7 @@ class LLMJudgeScorer:
             if self.sidecar_dir:
                 self._write_sidecar(verdict)
             return result
-        except (EnvironmentError, anthropic.APIError, LLMJudgeScorerError) as exc:
+        except (OSError, anthropic.APIError, LLMJudgeScorerError) as exc:
             logger.warning(
                 "LLM judge failed for %s (%s: %s) — falling back to heuristic scorer",
                 output.requirement_id,

@@ -1,0 +1,22 @@
+{
+  "run_id": "run_v1",
+  "model_name": "claude",
+  "model_version": "claude-sonnet-4-6",
+  "prompt_version": "v1",
+  "dataset_version": "mvp_v1",
+  "scoring_version": "v1",
+  "threshold_version": "v1",
+  "timestamp": "2026-04-21T12:00:00+00:00",
+  "git_commit_hash": "2c0c256",
+  "config_file": "configs/run_v1.yaml",
+  "total_requirements": 10,
+  "parse_failures": 0,
+  "total_evaluated": 10,
+  "pass_count": 8,
+  "borderline_count": 2,
+  "fail_count": 0,
+  "avg_weighted_score": 1.8475,
+  "scorer_type": "heuristic",
+  "is_dirty": false,
+  "quality_gate_decision": "pass"
+}

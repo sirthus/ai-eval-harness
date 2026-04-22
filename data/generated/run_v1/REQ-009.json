@@ -1,0 +1,19 @@
+{
+  "requirement_id": "REQ-009",
+  "test_cases": [
+    {
+      "title": "User can opt out of system notifications",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Navigate to account settings",
+        "Find the notification preferences section",
+        "Disable notifications and save"
+      ],
+      "expected_result": "Notifications are disabled; the user does not receive further notifications after opting out",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [],
+  "notes": "The requirement is severely under-specified: no notification type, delivery channel, or triggering event is defined. The single test case covers the opt-out path as the only clearly testable behaviour. Recommend clarifying: (1) which notification types exist, (2) what delivery channels are supported (email, in-app, push), and (3) what events trigger notifications."
+}

@@ -14,7 +14,6 @@ from harness.llm_judge import LLMJudgeScorer, LLMJudgeScorerError
 from harness.schemas import GoldAnnotation, ModelOutput, TestCase
 from tests.factories import make_gold_annotation, make_model_output, make_test_case
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

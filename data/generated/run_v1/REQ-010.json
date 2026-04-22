@@ -1,0 +1,29 @@
+{
+  "requirement_id": "REQ-010",
+  "test_cases": [
+    {
+      "title": "User must provide a payment method to complete the upgrade",
+      "preconditions": ["User is logged in with a free account"],
+      "steps": [
+        "Navigate to the upgrade or premium page",
+        "Attempt to complete the upgrade without entering payment details"
+      ],
+      "expected_result": "The system requires payment method entry before allowing the upgrade to proceed",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Premium features are accessible after a successful account upgrade",
+      "preconditions": ["User has completed a successful premium upgrade"],
+      "steps": [
+        "Log in as the upgraded user",
+        "Navigate to a feature that is restricted to premium accounts"
+      ],
+      "expected_result": "The premium feature is accessible and fully functional for the upgraded user",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [],
+  "notes": "The requirement lacks specifics on the payment flow, pricing, and the full feature set. Two core billing integrity tests are provided: payment gate enforcement and premium access after upgrade. A confirmation step before charging was not explicitly tested as the flow is unspecified — recommend clarifying the checkout UX."
+}

@@ -42,7 +42,7 @@ def _get_anthropic_api_key() -> str:
     load_dotenv()
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        raise EnvironmentError("ANTHROPIC_API_KEY is not set")
+        raise OSError("ANTHROPIC_API_KEY is not set")
     return api_key
 
 

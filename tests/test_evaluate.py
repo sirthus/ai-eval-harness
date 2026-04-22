@@ -1,4 +1,4 @@
-"""Regression tests for evaluator artifact loading."""
+"""Tests for evaluator artifact loading."""
 
 from __future__ import annotations
 

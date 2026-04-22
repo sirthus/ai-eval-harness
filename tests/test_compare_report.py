@@ -15,7 +15,6 @@ from harness.schemas import (
 )
 from tests.factories import make_run_manifest, make_scored_result, make_small_requirements_list
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

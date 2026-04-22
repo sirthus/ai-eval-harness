@@ -159,6 +159,7 @@ def cmd_evaluate(args: argparse.Namespace, console: Console) -> None:
 
 def cmd_report(args: argparse.Namespace, console: Console) -> None:
     import json
+
     from harness.evaluate import scored_results_path
     from harness.loaders import load_config
     from harness.paths import manifest_path as build_manifest_path

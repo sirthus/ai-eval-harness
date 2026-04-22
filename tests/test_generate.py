@@ -1,12 +1,12 @@
-"""Regression tests for generation failure handling."""
+"""Tests for generation failure handling."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import yaml
 import pytest
+import yaml
 
 from harness import generate
 from harness.schemas import ModelOutput, Requirement, TestCase
@@ -91,7 +91,7 @@ class TestGenerateFailureHandling:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         def fake_get_key() -> str:
-            raise EnvironmentError("ANTHROPIC_API_KEY is not set")
+            raise OSError("ANTHROPIC_API_KEY is not set")
 
         monkeypatch.setattr(generate.model_adapter, "_get_anthropic_api_key", fake_get_key)
 

@@ -204,7 +204,10 @@ def _append_aggregate_table(
         "|---|---|",
         f"| Total samples | {total} |",
         f"| Pass | {counts['pass']} ({counts['pass'] / total:.0%}) |" if total else "| Pass | 0 |",
-        f"| Borderline | {counts['borderline']} ({counts['borderline'] / total:.0%}) |" if total else "| Borderline | 0 |",
+        (
+            f"| Borderline | {counts['borderline']} ({counts['borderline'] / total:.0%}) |"
+            if total else "| Borderline | 0 |"
+        ),
         f"| Fail | {counts['fail']} ({counts['fail'] / total:.0%}) |" if total else "| Fail | 0 |",
     ]
     if avg_weighted is not None:
@@ -290,7 +293,8 @@ def _write_markdown(
             "| View | Status | Notes |",
             "|---|---|---|",
             f"| Auto (persisted gate) | {_quality_gate_label(manifest.quality_gate_decision)} | "
-            f"Persisted manifest gate. {_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)} |",
+            f"Persisted manifest gate. "
+            f"{_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)} |",
             f"| Post-review outlook | {_quality_gate_recommendation(list(post_review.values()))} | "
             f"Derived from adjudicated sample decisions only; not persisted to the manifest. "
             f"{_quality_gate_supporting_context(post_review_counts, total, manifest.parse_failures)} |",
@@ -299,7 +303,8 @@ def _write_markdown(
     else:
         lines += [
             f"Auto gate: {_quality_gate_label(manifest.quality_gate_decision)}",
-            f"Basis: persisted manifest gate. {_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)}",
+            f"Basis: persisted manifest gate. "
+            f"{_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)}",
             "",
         ]
 
@@ -310,7 +315,8 @@ def _write_markdown(
         lines += [
             "## Per-Sample Results",
             "",
-            "| ID | Auto Decision | Human Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |",
+            "| ID | Auto Decision | Human Decision | Weighted"
+            " | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |",
             "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for r in sorted(results, key=lambda x: x.requirement_id):
@@ -332,7 +338,8 @@ def _write_markdown(
         lines += [
             "## Per-Sample Results",
             "",
-            "| ID | Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |",
+            "| ID | Decision | Weighted | Correct | Complete | Halluc Risk"
+            " | Reviewer Use | Coverage | Notes | Diagnostics |",
             "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for r in sorted(results, key=lambda x: x.requirement_id):
@@ -447,7 +454,7 @@ def main() -> None:
     if not results_path.exists():
         raise FileNotFoundError(
             f"Scored results not found at {results_path}. "
-            "Run `python -m harness.evaluate --config ...` first."
+            "Run `harness evaluate --config ...` first."
         )
 
     cfg = load_config(args.config)
@@ -460,7 +467,7 @@ def main() -> None:
     if not mpath.exists():
         raise FileNotFoundError(
             f"Run manifest not found at {mpath}. "
-            "Run the full pipeline with `python -m harness.run_eval --config ...` first."
+            "Run the full pipeline with `harness run --config ...` first."
         )
     manifest = RunManifest.model_validate(
         json.loads(mpath.read_text(encoding="utf-8"))

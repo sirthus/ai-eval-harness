@@ -19,7 +19,7 @@ import json
 import logging
 import re
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from harness.charts import inject_chart_markdown
@@ -174,7 +174,7 @@ def build_trend_data(
     dom_rates = domain_pass_rates(per_req_history, requirements, run_id_list)
 
     return TrendReport(
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         runs=run_summaries,
         per_requirement_history=dict(per_req_history),
         consistently_borderline=consistently_bl,
@@ -383,7 +383,7 @@ def run(
 
     out_dir = Path(reports_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     chart_lines: list[str] = []
     if charts and trend.runs:

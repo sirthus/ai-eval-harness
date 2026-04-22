@@ -2,7 +2,7 @@
 
 import pytest
 
-from harness.score import (
+from harness.heuristic_scorer import (
     _coverage_ratio,
     _disallowed_hits,
     _full_text,
@@ -12,8 +12,9 @@ from harness.score import (
     score_hallucination_risk,
     score_reviewer_usefulness,
 )
-from tests.factories import make_gold_annotation as make_gold, make_model_output as make_output, make_test_case
-
+from tests.factories import make_gold_annotation as make_gold
+from tests.factories import make_model_output as make_output
+from tests.factories import make_test_case
 
 # ---------------------------------------------------------------------------
 # _full_text
@@ -98,6 +99,18 @@ class TestCoverageRatio:
         output = make_output()
         gold = make_gold(coverage_points=[])
         assert _coverage_ratio(output, gold) == 1.0
+
+    def test_keyword_match_does_not_false_positive_on_substring(self):
+        # "log" must not match inside "login" or "dialogue" — word-boundary matching required.
+        output = make_output(test_cases=[make_test_case(title="login and dialogue with admin")])
+        gold = make_gold(coverage_points=["log"])
+        assert _coverage_ratio(output, gold) == 0.0
+
+    def test_keyword_match_does_not_false_positive_on_prefix(self):
+        # "session" must not match inside "sessions" or "sessionless".
+        output = make_output(test_cases=[make_test_case(title="sessions are sessionless")])
+        gold = make_gold(coverage_points=["session"])
+        assert _coverage_ratio(output, gold) == 0.0
 
 
 # ---------------------------------------------------------------------------

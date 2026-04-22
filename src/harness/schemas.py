@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from typing import Annotated, Literal
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # LLM output schema
@@ -21,7 +21,7 @@ class TestCase(BaseModel):
 
 
 class ModelOutput(BaseModel):
-    requirement_id: str
+    requirement_id: Annotated[str, Field(pattern=r"^[\w\-\.]+$")]
     test_cases: Annotated[list[TestCase], Field(min_length=1)]
     assumptions: list[str] = Field(default_factory=list)
     notes: str = ""

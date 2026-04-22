@@ -1,0 +1,40 @@
+{
+  "requirement_id": "REQ-007",
+  "test_cases": [
+    {
+      "title": "Member role user receives access denied response on admin URL",
+      "preconditions": ["User is logged in with the member role"],
+      "steps": [
+        "Navigate directly to the admin dashboard URL",
+        "Observe the HTTP response or UI message"
+      ],
+      "expected_result": "Access is denied with a 403 Forbidden response or equivalent access-denied message",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Member user is redirected to their own dashboard after denied admin access",
+      "preconditions": ["User is logged in with the member role"],
+      "steps": [
+        "Attempt to navigate to the admin dashboard URL",
+        "Observe where the browser is taken after the denial"
+      ],
+      "expected_result": "The user is redirected to their personal dashboard; the admin area is not visible",
+      "priority": "medium",
+      "type": "permission"
+    },
+    {
+      "title": "Unauthorised admin access attempt is recorded in the audit log",
+      "preconditions": ["User is logged in with the member role"],
+      "steps": [
+        "Attempt to access the admin dashboard URL",
+        "Log in as an administrator and review the audit log"
+      ],
+      "expected_result": "An audit log entry is created recording the user identity, target URL, and timestamp of the attempt",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Three separate test cases map to the three explicit outcomes in the requirement: access denied, redirect, and audit log entry."
+}

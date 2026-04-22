@@ -12,21 +12,19 @@ A Python evaluation harness for AI-generated QA test cases. Given a requirement 
 
 ```bash
 # Install
-pip install -e ".[dev]"
-
-# Install chart support too
-pip install -e ".[dev,charts]"
+pip install -e ".[dev]"          # core + tests
+pip install -e ".[dev,charts]"   # adds PNG chart output
 
 # Run a full evaluation
-python -m harness run --config configs/run_v1.yaml
+harness run --config configs/run_v1.yaml
 
 # Run individual steps
-python -m harness generate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
-python -m harness evaluate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
-python -m harness report   --config configs/run_v2_prompt_v2.yaml --run-id <run_id>
-python -m harness review   --run-id <run_id>
-python -m harness compare  --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl
-python -m harness trend    --dataset-path data/requirements/mvp_dataset_v2.jsonl
+harness generate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
+harness evaluate --config configs/run_v2_prompt_v2.yaml --run-id local_dev_run
+harness report   --config configs/run_v2_prompt_v2.yaml --run-id <run_id>
+harness review   --run-id <run_id>
+harness compare  --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl
+harness trend    --dataset-path data/requirements/mvp_dataset_v2.jsonl
 
 # Tests
 pytest
@@ -48,7 +46,8 @@ src/harness/
   run_eval.py       # orchestrates full pipeline
   generate.py       # calls model API, writes generated output
   evaluate.py       # scores generated output against gold
-  score.py          # heuristic scoring logic
+  heuristic_scorer.py # heuristic scoring logic
+  scorer_base.py    # Scorer protocol (interface)
   llm_judge.py      # optional LLM-as-judge scorer
   report.py         # per-run CSV + markdown report
   compare_report.py # side-by-side run comparison

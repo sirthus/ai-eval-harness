@@ -1,0 +1,11 @@
+requirement_id,auto_decision,weighted_score,correctness,completeness,hallucination_risk,reviewer_usefulness,coverage_ratio,disallowed_hits,scoring_notes,diagnostic_notes
+REQ-001,pass,2.0,2.0,2.0,2.0,2.0,100%,,,
+REQ-002,pass,1.85,2.0,2.0,2.0,1.0,100%,,,
+REQ-003,pass,2.0,2.0,2.0,2.0,2.0,100%,,,
+REQ-004,pass,2.0,2.0,2.0,2.0,2.0,100%,,,
+REQ-005,pass,2.0,2.0,2.0,2.0,2.0,100%,,,
+REQ-006,pass,2.0,2.0,2.0,2.0,2.0,100%,,,
+REQ-007,pass,1.85,2.0,2.0,2.0,1.0,75%,,,
+REQ-008,pass,1.85,2.0,2.0,2.0,1.0,80%,,,
+REQ-009,borderline,1.375,1.5,1.0,2.0,1.0,67%,,,
+REQ-010,borderline,1.55,2.0,1.0,2.0,1.0,67%,,,

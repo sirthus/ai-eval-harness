@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from harness.charts import inject_chart_markdown
@@ -94,7 +94,7 @@ def build_compare_report(
     lines: list[str] = []
 
     # ---------- Header ----------
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     lines += [
         "# Comparison Report",
         "",
@@ -136,9 +136,12 @@ def build_compare_report(
         "",
         "| Metric | Run A | Run B | Delta |",
         "|---|---|---|---|",
-        f"| Pass rate | {_pct(pass_a, total_a)} | {_pct(pass_b, total_b)} | {_delta_str((pass_b/total_b if total_b else 0) - (pass_a/total_a if total_a else 0))} |",
-        f"| Borderline rate | {_pct(bl_a, total_a)} | {_pct(bl_b, total_b)} | {_delta_str((bl_b/total_b if total_b else 0) - (bl_a/total_a if total_a else 0))} |",
-        f"| Fail rate | {_pct(fail_a, total_a)} | {_pct(fail_b, total_b)} | {_delta_str((fail_b/total_b if total_b else 0) - (fail_a/total_a if total_a else 0))} |",
+        f"| Pass rate | {_pct(pass_a, total_a)} | {_pct(pass_b, total_b)} "
+        f"| {_delta_str((pass_b/total_b if total_b else 0) - (pass_a/total_a if total_a else 0))} |",
+        f"| Borderline rate | {_pct(bl_a, total_a)} | {_pct(bl_b, total_b)} "
+        f"| {_delta_str((bl_b/total_b if total_b else 0) - (bl_a/total_a if total_a else 0))} |",
+        f"| Fail rate | {_pct(fail_a, total_a)} | {_pct(fail_b, total_b)} "
+        f"| {_delta_str((fail_b/total_b if total_b else 0) - (fail_a/total_a if total_a else 0))} |",
         f"| Avg weighted score | {avg_a:.2f} | {avg_b:.2f} | {_delta_str(avg_b - avg_a)} |",
         f"| Parse failures | {manifest_a.parse_failures} | {manifest_b.parse_failures} | — |",
         "",
@@ -296,7 +299,7 @@ def run(
 
     out_dir = Path(reports_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     chart_lines: list[str] = []
     if charts:

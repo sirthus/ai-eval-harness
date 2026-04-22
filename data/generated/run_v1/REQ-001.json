@@ -1,0 +1,33 @@
+{
+  "requirement_id": "REQ-001",
+  "test_cases": [
+    {
+      "title": "User is authenticated and redirected to dashboard with valid credentials",
+      "preconditions": ["A registered user account exists", "User is not currently logged in"],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid registered email address",
+        "Enter the correct password",
+        "Click the Submit button"
+      ],
+      "expected_result": "User is authenticated successfully and redirected to their personal dashboard",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Session token is created on successful login",
+      "preconditions": ["A registered user account exists", "User is not currently logged in"],
+      "steps": [
+        "Navigate to the login page",
+        "Enter valid credentials",
+        "Click Submit",
+        "Inspect browser session or cookie storage"
+      ],
+      "expected_result": "A session token is present in secure storage following successful authentication",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Covers the happy-path login flow including session creation. Both test cases share the same preconditions as the user must start unauthenticated."
+}

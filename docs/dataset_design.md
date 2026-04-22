@@ -33,7 +33,7 @@ The dataset deliberately includes:
 
 That mix forces the scoring logic and review queue to do real work. A dataset made only of happy-path requirements would make the harness look stronger than it really is.
 
-## Domain Distribution
+## Domain Distribution (mvp_dataset_v2)
 
 | Domain | Count | Notes |
 |---|---|---|
@@ -47,7 +47,7 @@ That mix forces the scoring logic and review queue to do real work. A dataset ma
 | `data_export` | 4 | CSV and JSON export, async exports, filename handling |
 | `onboarding` | 3 | Welcome flows, wizard behavior, skip behavior |
 
-## Difficulty Distribution
+## Difficulty Distribution (mvp_dataset_v2)
 
 | Difficulty | Count | Notes |
 |---|---|---|

@@ -12,7 +12,7 @@ from __future__ import annotations
 import csv
 import json
 
-
+from harness.heuristic_scorer import score
 from harness.report import write_report
 from harness.review_queue import write_queue
 from harness.schemas import (
@@ -24,9 +24,7 @@ from harness.schemas import (
     ScoredResult,
     TestCase,
 )
-from harness.score import score
 from harness.trend_report import build_trend_data
-
 
 # ---------------------------------------------------------------------------
 # Synthetic data factories
