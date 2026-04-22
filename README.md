@@ -1,5 +1,7 @@
 # AI QA Evaluation Harness
 
+  ![CI](https://github.com/sirthus/ai-eval-harness/actions/workflows/ci.yml/badge.svg)
+
 A Python evaluation harness that measures whether an LLM can turn requirement snippets into useful QA test cases, using schema validation, rubric-based scoring, human review, and repeatable reporting.
 
 Implemented through Phase 3. The current system includes:
