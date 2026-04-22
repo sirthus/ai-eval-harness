@@ -11,7 +11,6 @@ from harness.cli import make_parser, print_results_table, print_run_summary
 from harness.schemas import RunManifest, ScoredResult
 from tests.factories import make_run_manifest, make_scored_result
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

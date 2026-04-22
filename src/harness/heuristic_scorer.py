@@ -64,9 +64,13 @@ def _full_text(output: ModelOutput) -> str:
 
 
 def _keyword_match(phrase: str, text: str) -> bool:
-    """Return True if every word in `phrase` appears in `text`."""
+    """Return True if every word in `phrase` appears as a whole word in `text`.
+
+    Uses word-boundary matching to prevent short words from matching inside
+    longer unrelated words (e.g. "log" must not match "login" or "dialogue").
+    """
     words = re.findall(r"\w+", phrase.lower())
-    return all(word in text for word in words) if words else False
+    return all(re.search(rf"\b{re.escape(word)}\b", text) for word in words) if words else False
 
 
 def _coverage_ratio(output: ModelOutput, gold: GoldAnnotation) -> float:
@@ -279,7 +283,7 @@ def score(
 
     if hits:
         hit_note = f"Disallowed assumption(s) found: {hits}"
-        notes = f"{notes}; {hit_note}".strip("; ")
+        notes = f"{notes}; {hit_note}".lstrip("; ")
 
     diagnostic_notes = _compute_diagnostics(output, diag_cfg)
 

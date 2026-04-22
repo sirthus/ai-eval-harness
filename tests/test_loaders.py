@@ -9,7 +9,6 @@ import pytest
 from harness.loaders import load_config, load_manifest, load_requirements, load_scored_results
 from tests.factories import make_run_manifest, make_scored_result, make_small_requirements_list
 
-
 # ---------------------------------------------------------------------------
 # load_manifest
 # ---------------------------------------------------------------------------

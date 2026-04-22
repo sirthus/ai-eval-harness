@@ -2,7 +2,7 @@
 
 Related docs: [README](../README.md), [Architecture](architecture.md), [Review Workflow](review_workflow.md)
 
-All examples below are synthetic and sanitized. They show the shape of the outputs this harness produces without exposing any proprietary requirement text.
+The per-run example below is synthetic and shows the report structure with commentary. For a complete report from a real pipeline run, see [example_report.md](example_report.md).
 
 ![Synthetic reporting outputs](assets/report_outputs.svg)
 
@@ -18,17 +18,20 @@ reports/run_v2_prompt_v2_20260410T153000Z_scores.csv
 Example excerpt:
 
 ```markdown
-# Evaluation Report - run_v2_prompt_v2_20260410T153000Z
+# Evaluation Report — run_v2_prompt_v2_20260410T153000Z
 
 ## Run Summary
 
 | Field | Value |
 |---|---|
-| Model | claude-3-5-sonnet-20241022 |
-| Prompt version | v2 |
-| Dataset version | mvp_v2 |
-| Scorer | heuristic |
-| Quality gate | needs_review |
+| Run ID | `run_v2_prompt_v2_20260410T153000Z` |
+| Model | `claude-3-5-sonnet-20241022` |
+| Prompt version | `v2` |
+| Dataset version | `mvp_v2` |
+| Scoring version | `v1` |
+| Timestamp | 2026-04-10T15:30:00+00:00 |
+| Git commit | `2c0c256` |
+| Config | `configs/run_v2_prompt_v2.yaml` |
 
 ### Aggregate Scores (Auto)
 
@@ -39,6 +42,7 @@ Example excerpt:
 | Borderline | 8 (20%) |
 | Fail | 4 (10%) |
 | Avg weighted score | 1.63 / 2.00 |
+| Avg coverage ratio | 74% |
 ```
 
 What to notice:
@@ -113,12 +117,12 @@ What to notice:
 
 ## Review Overlay Example
 
-When `--use-human-review` is enabled, reports keep automated artifacts intact and add reviewer context:
+When `--use-human-review` is enabled, reports keep automated artifacts intact and add reviewer context. The per-sample table gains an `Auto Decision` and `Human Decision` column pair:
 
 ```markdown
-| ID | Auto Decision | Human Decision | Weighted | Coverage |
-|---|---|---|---|---|
-| REQ-017 | borderline | pass | 1.35 | 67% |
+| ID | Auto Decision | Human Decision | Weighted | Correct | Complete | Halluc Risk | Reviewer Use | Coverage | Notes | Diagnostics |
+|---|---|---|---|---|---|---|---|---|---|---|
+| REQ-017 | ~ borderline | pass | 1.35 | 2.0 | 1.0 | 2.0 | 1.0 | 67% | — | — |
 ```
 
 What to notice:

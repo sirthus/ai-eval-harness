@@ -94,7 +94,10 @@ class TestGenerateRetries:
         mock_client.messages.create.side_effect = [_api_error(), _api_error(), _api_error()]
         anthropic_ctor = mocker.patch("harness.model_adapter.anthropic.Anthropic", return_value=mock_client)
         sleep = mocker.patch("harness.model_adapter.time.sleep")
-        mocker.patch("harness.model_adapter._load_prompt", return_value="Requirement: {requirement_id}\nText: {requirement_text}")
+        mocker.patch(
+            "harness.model_adapter._load_prompt",
+            return_value="Requirement: {requirement_id}\nText: {requirement_text}",
+        )
         mocker.patch("harness.model_adapter._get_anthropic_api_key", return_value="test-key")
 
         with pytest.raises(ModelAPIError, match="after 3 attempts"):
@@ -109,7 +112,10 @@ class TestGenerateRetries:
         mock_client.messages.create.side_effect = [_api_error(), _mock_message()]
         mocker.patch("harness.model_adapter.anthropic.Anthropic", return_value=mock_client)
         sleep = mocker.patch("harness.model_adapter.time.sleep")
-        mocker.patch("harness.model_adapter._load_prompt", return_value="Requirement: {requirement_id}\nText: {requirement_text}")
+        mocker.patch(
+            "harness.model_adapter._load_prompt",
+            return_value="Requirement: {requirement_id}\nText: {requirement_text}",
+        )
         mocker.patch("harness.model_adapter._get_anthropic_api_key", return_value="test-key")
 
         output = generate("REQ-001", "Users can log in.", "claude-sonnet-4-6", "v2")

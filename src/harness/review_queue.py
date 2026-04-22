@@ -84,7 +84,7 @@ def write_adjudicated(
     return adj_path
 
 
-def load_adjudicated(run_id: str, reviews_dir: str) -> dict[str, "ReviewRecord"]:
+def load_adjudicated(run_id: str, reviews_dir: str) -> dict[str, ReviewRecord]:
     """Load adjudicated records for a run. Returns a dict keyed by requirement_id."""
     adj_path = Path(reviews_dir) / run_id / "adjudicated.jsonl"
     if not adj_path.exists():

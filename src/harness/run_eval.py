@@ -23,10 +23,10 @@ import argparse
 import logging
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
-from harness import evaluate, generate, review_queue, report
+from harness import evaluate, generate, report, review_queue
 from harness.loaders import load_config
 from harness.paths import manifest_path as build_manifest_path
 from harness.schemas import RunManifest
@@ -87,7 +87,9 @@ def _compute_quality_gate(
         return "fail"
     if borderlines > 0 or parse_failures > 0:
         return "needs_review"
-    return "fail"
+    # 40–69% pass rate, no borderlines, no parse failures — not bad enough to fail,
+    # but not strong enough to pass outright.
+    return "needs_review"
 
 
 def run(config_path: str) -> RunManifest:
@@ -95,7 +97,7 @@ def run(config_path: str) -> RunManifest:
     logger.info("Config: %s", config_path)
 
     cfg = load_config(config_path)
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     # Unique ID for this execution; config run_id is the series/version identifier.
     run_id = _make_run_id(cfg["run_id"], timestamp)
     git_hash = _git_commit_hash()

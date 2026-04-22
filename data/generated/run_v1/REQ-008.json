@@ -1,0 +1,40 @@
+{
+  "requirement_id": "REQ-008",
+  "test_cases": [
+    {
+      "title": "Search with special characters returns results safely without a server error",
+      "preconditions": ["User is logged in", "Tasks exist in the system"],
+      "steps": [
+        "Enter a search query containing quotes and angle brackets",
+        "Submit the search"
+      ],
+      "expected_result": "Search results are returned safely with no server error or crash",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Search with ampersands and special characters completes gracefully",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Enter a search query containing ampersands and double quotes",
+        "Submit the search"
+      ],
+      "expected_result": "The search completes without error; results or an empty set are returned gracefully",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Malformed input does not cause a 500 error or expose system internals",
+      "preconditions": ["User is logged in"],
+      "steps": [
+        "Enter a query with a mix of special characters and submit",
+        "Observe the response"
+      ],
+      "expected_result": "The system returns a handled response; no internal error details are exposed to the user",
+      "priority": "high",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Covers safe result return and graceful handling of special characters. Explicit injection (SQL metacharacters) and XSS output-encoding tests were not included in this pass — these should be added in a follow-up."
+}

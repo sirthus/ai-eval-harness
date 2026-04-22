@@ -29,8 +29,8 @@ That design choice matters. Instead of producing a one-off score in memory, the 
 | `paths.py` | Canonical artifact-path helpers for generated outputs and run manifests |
 | `model_adapter.py` | Anthropic client integration, prompt loading, retries, and response parsing |
 | `schemas.py` | Shared data contracts for datasets, outputs, scores, reviews, and manifests |
-| `score.py` | Heuristic scorer implementation and score computation |
-| `scoring.py` | Stable scorer interface shared by heuristic and judge scorers |
+| `heuristic_scorer.py` | Heuristic scorer implementation and score computation |
+| `scorer_base.py` | Stable `Scorer` protocol shared by heuristic and judge scorers |
 | `llm_judge.py` | Optional scorer that uses a second model as a semantic judge |
 | `evaluate.py` | Gold loading, generated-output loading, config-driven scorer selection, and scored-result persistence |
 | `review_queue.py` | Borderline queue and adjudication persistence |

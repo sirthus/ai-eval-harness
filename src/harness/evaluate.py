@@ -12,14 +12,15 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, TypeAlias
+from typing import Any
 
-from harness import score as scoring
+from harness import heuristic_scorer as scoring
 from harness.loaders import load_config
 from harness.paths import ArtifactPaths
 from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult
-from harness.scoring import Scorer
+from harness.scorer_base import Scorer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 SCORED_RESULTS_FILE = "scored_results.json"
 
-ScoreCallable: TypeAlias = Callable[
+type ScoreCallable = Callable[
     [
         ModelOutput,
         GoldAnnotation,

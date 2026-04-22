@@ -1,7 +1,6 @@
-"""Regression tests for report human-review overlays."""
+"""Tests for report human-review overlays."""
 
 from __future__ import annotations
-
 
 from harness.report import write_report
 from harness.schemas import DimensionScores, ReviewRecord, RunManifest, ScoredResult

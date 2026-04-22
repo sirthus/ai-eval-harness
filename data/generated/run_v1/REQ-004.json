@@ -1,0 +1,43 @@
+{
+  "requirement_id": "REQ-004",
+  "test_cases": [
+    {
+      "title": "Task is saved with no assignee when the assignee field is left blank",
+      "preconditions": ["User is logged in", "A project exists"],
+      "steps": [
+        "Navigate to the create task page",
+        "Enter a title and description",
+        "Leave the assignee field blank",
+        "Click Save"
+      ],
+      "expected_result": "The task is saved successfully with an unassigned state; no assignee is shown",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Unassigned task is visible in the team unassigned task view",
+      "preconditions": ["An unassigned task has been created in the project"],
+      "steps": [
+        "Navigate to the team unassigned view",
+        "Locate the task by name"
+      ],
+      "expected_result": "The task appears in the unassigned view with its title and unassigned state visible",
+      "priority": "medium",
+      "type": "positive"
+    },
+    {
+      "title": "An assignee can be added to an unassigned task at any later time",
+      "preconditions": ["An unassigned task exists in the project"],
+      "steps": [
+        "Open the unassigned task",
+        "Click the assignee field and select a team member",
+        "Save the changes"
+      ],
+      "expected_result": "The task is updated with the chosen assignee; it no longer appears in the unassigned view",
+      "priority": "medium",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Covers optional-assignee creation, unassigned visibility, and late-assignment scenarios as specified."
+}

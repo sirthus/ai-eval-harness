@@ -1,0 +1,65 @@
+{
+  "requirement_id": "REQ-003",
+  "test_cases": [
+    {
+      "title": "Admin role is required to delete a project",
+      "preconditions": ["A member role user is logged in", "At least one project exists"],
+      "steps": [
+        "Navigate to the project page as a member user",
+        "Inspect available actions on the project"
+      ],
+      "expected_result": "No delete option is available; the admin role is required for project deletion",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Confirmation dialog appears before project deletion",
+      "preconditions": ["Admin user is logged in", "At least one project exists"],
+      "steps": [
+        "Navigate to the target project",
+        "Click the Delete Project button"
+      ],
+      "expected_result": "A confirmation dialog is displayed asking the admin to confirm deletion before proceeding",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Project is permanently deleted after admin confirms",
+      "preconditions": ["Admin user is logged in", "At least one project exists"],
+      "steps": [
+        "Navigate to the target project",
+        "Click Delete Project",
+        "Confirm deletion in the dialog",
+        "Search for the project in the project list"
+      ],
+      "expected_result": "The project is deleted and no longer appears in any project listing",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "All project tasks are removed when the project is deleted",
+      "preconditions": ["Admin user is logged in", "A project with tasks exists"],
+      "steps": [
+        "Note the task IDs belonging to the project",
+        "Delete the project",
+        "Attempt to retrieve the tasks by their IDs"
+      ],
+      "expected_result": "All tasks associated with the deleted project are also removed from the system",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Project members are notified when a project is deleted",
+      "preconditions": ["Admin user is logged in", "A project with at least one member exists"],
+      "steps": [
+        "Delete the project with admin confirmation",
+        "Check the notification inbox of a former project member"
+      ],
+      "expected_result": "Each project member receives a notification that the project has been deleted",
+      "priority": "medium",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Five test cases cover all five explicitly stated requirements: role check, confirmation dialog, project deletion, task cascade, and member notification."
+}

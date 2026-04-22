@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-
-from harness.schemas import GoldAnnotation, ModelOutput, TestCase
-from harness.score import (
+from harness.heuristic_scorer import (
     _compute_diagnostics,
     score,
     score_correctness,
     score_reviewer_usefulness,
 )
-
+from harness.schemas import GoldAnnotation, ModelOutput, TestCase
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -139,7 +137,9 @@ class TestReviewerUsefulnessPhase2:
 
 class TestDiagnosticNotes:
     def test_long_expected_result_flagged_when_enabled(self):
-        tc = _tc(expected_result="A very long expected result that clearly exceeds fifteen words total count in this particular sentence")
+        tc = _tc(
+            expected_result="A long result that clearly exceeds fifteen words total count right here in this particular test"  # noqa: E501
+        )
         output = _output([tc, _tc(title="Other")])
         notes = _compute_diagnostics(output, {"flag_long_expected_result": True, "flag_low_step_verbosity": False})
         assert "[diag]" in notes
@@ -160,7 +160,7 @@ class TestDiagnosticNotes:
     def test_diagnostics_do_not_affect_score(self):
         # Same output with diagnostics on vs off must produce the same dimension scores
         tc_verbose = _tc(
-            expected_result="A very long expected result that has many many many many many words in it right here now indeed",
+            expected_result="A very long expected result with many many words in it right here now",
             steps=["go"],
         )
         output = _output([tc_verbose, _tc(title="Other")])
@@ -168,14 +168,16 @@ class TestDiagnosticNotes:
             requirement_id="REQ-T",
             required_coverage_points=["system behaves correctly"],
         )
-        result_with_diag = score(output, gold, diagnostics={"flag_long_expected_result": True, "flag_low_step_verbosity": True})
-        result_no_diag = score(output, gold, diagnostics={"flag_long_expected_result": False, "flag_low_step_verbosity": False})
+        result_with_diag = score(output, gold, diagnostics={"flag_long_expected_result": True, "flag_low_step_verbosity": True})  # noqa: E501
+        result_no_diag = score(output, gold, diagnostics={"flag_long_expected_result": False, "flag_low_step_verbosity": False})  # noqa: E501
         assert result_with_diag.scores == result_no_diag.scores
         assert result_with_diag.weighted_score == result_no_diag.weighted_score
         assert result_with_diag.decision == result_no_diag.decision
 
     def test_diagnostic_notes_written_to_scored_result(self):
-        tc = _tc(expected_result="A very long expected result with many many many words beyond fifteen total words here now")
+        tc = _tc(
+            expected_result="A very long expected result with many many many words beyond fifteen total words here now"
+        )
         output = _output([tc, _tc(title="Other")])
         gold = GoldAnnotation(requirement_id="REQ-T", required_coverage_points=[])
         result = score(output, gold, diagnostics={"flag_long_expected_result": True, "flag_low_step_verbosity": False})

@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from harness import model_adapter
@@ -103,7 +103,7 @@ def _write_failure_record(
     record = {
         "requirement_id": requirement_id,
         "error": error,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     marker = generated_dir / f"{requirement_id}.fail.json"
     marker.write_text(json.dumps(record, indent=2), encoding="utf-8")

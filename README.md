@@ -1,10 +1,10 @@
 # AI QA Evaluation Harness
 
-  ![CI](https://github.com/sirthus/ai-eval-harness/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/sirthus/ai-eval-harness/actions/workflows/ci.yml/badge.svg)
 
 A Python evaluation harness that measures whether an LLM can turn requirement snippets into useful QA test cases, using schema validation, rubric-based scoring, human review, and repeatable reporting.
 
-Implemented through Phase 3. The current system includes:
+The system includes:
 
 - structured test-case generation through Anthropic models
 - heuristic scoring and optional LLM-as-judge scoring
@@ -41,7 +41,7 @@ Current evaluation tracks:
 
 | Track | Dataset | Gold | Configs | Purpose |
 |---|---|---|---|---|
-| Baseline | `mvp_dataset.jsonl` | `gold_test_cases.jsonl` | `configs/run_v1.yaml` | Small Phase 1 baseline |
+| Baseline | `mvp_dataset.jsonl` | `gold_test_cases.jsonl` | `configs/run_v1.yaml` | 10-requirement baseline, real run committed |
 | Prompt comparison | `mvp_dataset_v2.jsonl` | `gold_test_cases_v2.jsonl` | `configs/run_v2_prompt_v1.yaml`, `configs/run_v2_prompt_v2.yaml` | Prompt comparison on the primary working dataset |
 | Alternate model path | `mvp_dataset_v2.jsonl` | `gold_test_cases_v2.jsonl` | `configs/run_v3_haiku.yaml` | Second model or prompt comparison path |
 
@@ -66,13 +66,8 @@ flowchart LR
 Install the project:
 
 ```bash
-pip install -e ".[dev]"
-```
-
-Install chart support too:
-
-```bash
-pip install -e ".[dev,charts]"
+pip install -e ".[dev]"          # core + tests
+pip install -e ".[dev,charts]"   # adds PNG chart output
 ```
 
 Set `ANTHROPIC_API_KEY` in your shell or a local `.env` file before generation or `llm-judge` runs.
@@ -80,22 +75,22 @@ Set `ANTHROPIC_API_KEY` in your shell or a local `.env` file before generation o
 Run the full pipeline:
 
 ```bash
-python -m harness run --config configs/run_v2_prompt_v2.yaml
+harness run --config configs/run_v2_prompt_v2.yaml
 ```
 
 Useful follow-up commands:
 
 ```bash
-python -m harness report  --config configs/run_v2_prompt_v2.yaml --run-id <run_id> --charts
-python -m harness review  --run-id <run_id>
-python -m harness compare --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl --charts
-python -m harness trend   --dataset-path data/requirements/mvp_dataset_v2.jsonl --charts
+harness report  --config configs/run_v2_prompt_v2.yaml --run-id <run_id> --charts
+harness review  --run-id <run_id>
+harness compare --run-a <run_a> --run-b <run_b> --dataset-path data/requirements/mvp_dataset_v2.jsonl --charts
+harness trend   --dataset-path data/requirements/mvp_dataset_v2.jsonl --charts
 ```
 
 The unified CLI is the recommended entry point:
 
 ```bash
-python -m harness <subcommand>
+harness <subcommand>
 ```
 
 Available subcommands:
@@ -113,9 +108,10 @@ Available subcommands:
 1. Read this README for the project claim, scope, and quickstart.
 2. Read [PROJECT.md](PROJECT.md) for the engineering brief and major design choices.
 3. Read [docs/architecture.md](docs/architecture.md) for the end-to-end system flow and artifact model.
-4. Read [docs/report_examples.md](docs/report_examples.md) for synthetic examples of the outputs this harness produces.
-5. Read [docs/dataset_design.md](docs/dataset_design.md) and [docs/review_workflow.md](docs/review_workflow.md) for the dataset and human-review details.
-6. Read [docs/history/README.md](docs/history/README.md) only if you want the implementation-history planning documents.
+4. Read [docs/example_report.md](docs/example_report.md) for a complete harness report from a real pipeline run on the v1 dataset.
+5. Read [docs/report_examples.md](docs/report_examples.md) for additional output format examples with commentary.
+6. Read [docs/dataset_design.md](docs/dataset_design.md) and [docs/review_workflow.md](docs/review_workflow.md) for the dataset and human-review details.
+7. Read [docs/history/README.md](docs/history/README.md) only if you want the implementation-history planning documents.
 
 ## Audit Trail
 
@@ -129,6 +125,12 @@ Each run writes a full set of inspectable artifacts rather than a single headlin
 - borderline review happens in a separate `data/reviews/{run_id}/` artifact path
 
 That separation is intentional: automated artifacts stay immutable, while human review remains an overlay.
+
+A complete example run is committed and inspectable in this repo:
+
+- [`data/generated/run_v1/`](data/generated/run_v1/) — generated test cases and scored results
+- [`data/runs/run_v1.json`](data/runs/run_v1.json) — run manifest
+- [`reports/run_v1_report.md`](reports/run_v1_report.md) — full markdown report
 
 ## Deliberate Boundaries
 

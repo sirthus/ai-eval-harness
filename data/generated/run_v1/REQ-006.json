@@ -1,0 +1,39 @@
+{
+  "requirement_id": "REQ-006",
+  "test_cases": [
+    {
+      "title": "Password reset email is sent to the registered address",
+      "preconditions": ["A registered user account exists"],
+      "steps": [
+        "Navigate to the Forgot Password page",
+        "Enter the registered email address"
+      ],
+      "expected_result": "A password reset email is delivered to the provided address containing a reset link",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Password reset link is rejected after 60 minutes",
+      "preconditions": ["A password reset link has been issued"],
+      "steps": [
+        "Wait until the link is older than 60 minutes",
+        "Click the reset link"
+      ],
+      "expected_result": "The link is rejected and an expiry message is shown to the user",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Old password no longer works after a successful reset",
+      "preconditions": ["A user has completed a password reset"],
+      "steps": [
+        "Attempt to log in using the previous password"
+      ],
+      "expected_result": "Login with the old password fails; the old password has been invalidated",
+      "priority": "high",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Covers reset email delivery, 60-minute expiry, and old-password invalidation. The single-use link constraint and confirmation of the new password being accepted were not explicitly tested due to scope prioritisation."
+}

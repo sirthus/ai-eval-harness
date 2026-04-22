@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from harness.loaders import load_config
@@ -323,7 +323,7 @@ def adjudicate(
         notes = input_fn("Notes (optional, press Enter to skip): ").strip()
         record.review_decision = "pass" if decision == "p" else "fail"
         record.reviewer_notes = notes
-        record.reviewed_at = datetime.now(timezone.utc).isoformat()
+        record.reviewed_at = datetime.now(UTC).isoformat()
         decided.append(record)
 
     result_map = {r.requirement_id: r for r in decided}

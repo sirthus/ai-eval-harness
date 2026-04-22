@@ -1,0 +1,31 @@
+{
+  "requirement_id": "REQ-005",
+  "test_cases": [
+    {
+      "title": "Registration with a duplicate email shows a clear error message",
+      "preconditions": ["An account with 'user@example.com' already exists"],
+      "steps": [
+        "Navigate to the registration page",
+        "Enter 'user@example.com' in the email field",
+        "Complete the remaining required fields",
+        "Submit the registration form"
+      ],
+      "expected_result": "An error message is shown indicating the email is already in use; registration does not proceed",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Duplicate-email registration does not modify the existing account",
+      "preconditions": ["An account with 'user@example.com' exists with a known password"],
+      "steps": [
+        "Attempt to register with 'user@example.com' and a different password",
+        "Log in using the original credentials"
+      ],
+      "expected_result": "The existing account is not modified; the original user can still log in with their original password",
+      "priority": "high",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [],
+  "notes": "Two test cases address the two explicit outcomes: the clear error text and the guarantee that the existing account is not modified."
+}

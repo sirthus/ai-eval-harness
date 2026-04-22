@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-
 import pytest
 
 pytest.importorskip("matplotlib", reason="matplotlib not installed; run pip install -e '.[charts]'")
 
 from harness import charts
 from harness.schemas import DimensionScores, ScoredResult
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

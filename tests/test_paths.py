@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from harness.heuristic_scorer import HeuristicScorer
 from harness.paths import ArtifactPaths, manifest_path
-from harness.score import HeuristicScorer
-from harness.scoring import Scorer
-
+from harness.scorer_base import Scorer
 
 # ---------------------------------------------------------------------------
 # ArtifactPaths
@@ -83,6 +82,7 @@ class TestScorerProtocol:
 
     def test_matching_local_class_satisfies_protocol(self):
         from typing import Any
+
         from harness.schemas import GoldAnnotation, ModelOutput, ScoredResult
 
         class LocalScorer:

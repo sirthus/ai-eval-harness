@@ -14,9 +14,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harness.score import HeuristicScorer
-from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult
+from harness.heuristic_scorer import HeuristicScorer
 from harness.run_eval import _compute_quality_gate
+from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult
 from tests.factories import make_run_manifest, make_scored_result
 
 
@@ -96,6 +96,14 @@ class TestQualityGateDecisionPersisted:
 
     def test_quality_gate_logic_fail_zero_evaluated(self):
         assert _compute_quality_gate(0.0, 0, 0) == "fail"
+
+    def test_quality_gate_logic_needs_review_mid_pass_rate_no_issues(self):
+        # 40–69% pass rate with no borderlines and no parse failures should be
+        # needs_review, not fail — a run with 60% pass is not an outright failure.
+        assert _compute_quality_gate(0.60, 0, 0) == "needs_review"
+
+    def test_quality_gate_logic_pass_exact_boundary(self):
+        assert _compute_quality_gate(0.70, 0, 0) == "pass"
 
     def test_manifest_schema_has_is_dirty_field(self):
         m = make_run_manifest(is_dirty=True)
@@ -328,6 +336,7 @@ class TestResolveScorer:
     def test_protocol_check_takes_precedence_over_callable(self, tmp_path):
         """An object that is both callable AND implements Scorer returns .score, not __call__."""
         from typing import Any
+
         from harness.evaluate import _resolve_scorer
 
         sentinel_call = object()
