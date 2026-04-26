@@ -4,13 +4,15 @@ import pytest
 
 from harness.heuristic_scorer import (
     _coverage_ratio,
-    _disallowed_hits,
     _full_text,
     score,
     score_completeness,
     score_correctness,
     score_hallucination_risk,
     score_reviewer_usefulness,
+)
+from harness.heuristic_scorer import (
+    disallowed_hits as _disallowed_hits,
 )
 from tests.factories import make_gold_annotation as make_gold
 from tests.factories import make_model_output as make_output

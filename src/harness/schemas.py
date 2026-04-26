@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -103,7 +103,7 @@ class RunManifest(BaseModel):
     borderline_count: int = 0
     fail_count: int = 0
     avg_weighted_score: float = 0.0
-    scorer_type: str = "heuristic"  # "heuristic" | "llm-judge"
+    scorer_type: Literal["heuristic", "llm-judge"] = "heuristic"
     scorer_fallback_count: int = 0
     is_dirty: bool = False
     quality_gate_decision: Literal["pass", "fail", "needs_review"] = "needs_review"
@@ -145,12 +145,20 @@ class RunSummary(BaseModel):
     avg_weighted_score: float
 
 
+class RequirementHistoryEntry(TypedDict, total=False):
+    run_id: str
+    decision: str
+    weighted_score: float
+    dataset_version: str
+    human_decision: str  # only present when --use-human-review is active
+
+
 class TrendReport(BaseModel):
     generated_at: str
     runs: list[RunSummary]
-    per_requirement_history: dict[str, list[dict]]  # req_id → [{run_id, decision, weighted_score}]
-    consistently_borderline: list[str]              # req_ids borderline in >50% of runs
-    domain_pass_rates: dict[str, dict[str, float]]  # domain → {run_id → pass_rate}
+    per_requirement_history: dict[str, list[RequirementHistoryEntry]]
+    consistently_borderline: list[str]
+    domain_pass_rates: dict[str, dict[str, float]]
 
 
 # ---------------------------------------------------------------------------

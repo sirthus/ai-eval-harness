@@ -48,7 +48,7 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
     requirements = load_requirements(dataset_path)
     logger.info("Loaded %d requirements from %s", len(requirements), dataset_path)
 
-    model_adapter.get_anthropic_client()
+    model_adapter.validate_api_key()
 
     parse_failures: list[str] = []
     for req in requirements:

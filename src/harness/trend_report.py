@@ -25,7 +25,7 @@ from pathlib import Path
 from harness.charts import inject_chart_markdown
 from harness.loaders import load_requirements, load_scored_results
 from harness.review_queue import load_adjudicated
-from harness.schemas import Requirement, RunManifest, RunSummary, TrendReport
+from harness.schemas import Requirement, RequirementHistoryEntry, RunManifest, RunSummary, TrendReport
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,6 +58,31 @@ def _load_all_manifests(runs_dir: str) -> list[RunManifest]:
         except Exception as e:
             logger.warning("Could not load manifest %s: %s", path, e)
     return manifests
+
+
+# ---------------------------------------------------------------------------
+# Filter resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_filter_dataset(
+    manifests: list[RunManifest],
+    filter_dataset: str | None,
+) -> tuple[str | None, bool]:
+    """Resolve the effective dataset filter from caller input and available manifests.
+
+    Returns (effective_filter, mixed_mode).
+    mixed_mode is True when filter_dataset == 'all'.
+    When filter_dataset is None/empty, defaults to the most recent dataset_version.
+    """
+    if filter_dataset == "all":
+        return None, True
+    if filter_dataset:
+        return filter_dataset, False
+    if manifests:
+        most_recent = max(manifests, key=lambda m: m.timestamp)
+        return most_recent.dataset_version, False
+    return None, False
 
 
 # ---------------------------------------------------------------------------
@@ -114,18 +139,11 @@ def build_trend_data(
     reviews_dir: str = "data/reviews",
 ) -> TrendReport:
     """Build a TrendReport from manifests and generated results."""
-    if filter_dataset is None or filter_dataset == "":
-        if manifests:
-            most_recent = max(manifests, key=lambda m: m.timestamp)
-            filter_dataset = most_recent.dataset_version
-        else:
-            filter_dataset = None
-
-    mixed_mode = filter_dataset == "all"
+    effective_filter, mixed_mode = _resolve_filter_dataset(manifests, filter_dataset)
 
     filtered = manifests
-    if not mixed_mode and filter_dataset:
-        filtered = [m for m in manifests if m.dataset_version == filter_dataset]
+    if not mixed_mode and effective_filter:
+        filtered = [m for m in manifests if m.dataset_version == effective_filter]
     if filter_prompt:
         filtered = [m for m in filtered if m.prompt_version == filter_prompt]
 
@@ -149,7 +167,7 @@ def build_trend_data(
         for m in filtered
     ]
 
-    per_req_history: dict[str, list[dict]] = defaultdict(list)
+    per_req_history: dict[str, list[RequirementHistoryEntry]] = defaultdict(list)
     req_ids_in_dataset = {r.requirement_id for r in requirements} if requirements else set()
 
     for manifest in filtered:
@@ -159,7 +177,7 @@ def build_trend_data(
         for req_id, result in results.items():
             if req_ids_in_dataset and req_id not in req_ids_in_dataset:
                 continue
-            entry = {
+            entry: RequirementHistoryEntry = {
                 "run_id": manifest.run_id,
                 "decision": result.decision,
                 "weighted_score": result.weighted_score,
@@ -358,15 +376,7 @@ def run(
     manifests = _load_all_manifests(runs_dir)
     requirements = load_requirements(dataset_path)
 
-    mixed_mode = filter_dataset == "all"
-    effective_filter = filter_dataset
-
-    if not filter_dataset:
-        if manifests:
-            most_recent = max(manifests, key=lambda m: m.timestamp)
-            effective_filter = most_recent.dataset_version
-        else:
-            effective_filter = None
+    effective_filter, mixed_mode = _resolve_filter_dataset(manifests, filter_dataset)
 
     trend = build_trend_data(
         manifests,

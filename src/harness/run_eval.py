@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Literal
 
 from harness import evaluate, generate, report, review_queue
-from harness.loaders import load_config
+from harness.loaders import load_config, load_requirements
 from harness.paths import manifest_path as build_manifest_path
 from harness.schemas import RunManifest
 
@@ -122,10 +122,6 @@ def run(config_path: str) -> RunManifest:
     if not results and not parse_failure_ids:
         logger.warning("No scored results produced; quality gate will fail.")
 
-    # Load total requirements count from dataset
-    with open(cfg["dataset_path"], encoding="utf-8") as f:
-        total_requirements = sum(1 for line in f if line.strip())
-
     # Step 3: Review queue
     logger.info("--- Step 3: Review queue ---")
     review_queue.write_queue(
@@ -136,6 +132,8 @@ def run(config_path: str) -> RunManifest:
 
     # Step 4: Report
     logger.info("--- Step 4: Report ---")
+
+    total_requirements = len(load_requirements(cfg["dataset_path"]))
 
     passes = sum(1 for r in results if r.decision == "pass")
     borderlines = sum(1 for r in results if r.decision == "borderline")

@@ -30,6 +30,19 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Formatting helpers
+# ---------------------------------------------------------------------------
+
+
+def _pct(n: int | float, d: int | float) -> str:
+    return f"{n/d:.0%}" if d else "n/a"
+
+
+def _delta_str(x: float) -> str:
+    return f"+{x:.2f}" if x > 0 else f"{x:.2f}"
+
+
+# ---------------------------------------------------------------------------
 # Delta computation
 # ---------------------------------------------------------------------------
 
@@ -127,9 +140,6 @@ def build_compare_report(
     fail_b = sum(1 for r in results_b.values() if r.decision == "fail")
     avg_a = sum(r.weighted_score for r in results_a.values()) / total_a if total_a else 0.0
     avg_b = sum(r.weighted_score for r in results_b.values()) / total_b if total_b else 0.0
-
-    def _pct(n, d): return f"{n/d:.0%}" if d else "n/a"
-    def _delta_str(x): return f"+{x:.2f}" if x > 0 else f"{x:.2f}"
 
     lines += [
         "## Aggregate Delta",

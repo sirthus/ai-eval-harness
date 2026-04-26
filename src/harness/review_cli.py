@@ -290,15 +290,17 @@ def adjudicate(
     input_fn can be replaced in tests via monkeypatching.
     console: optional rich.console.Console for rich display.
     """
+    _echo = console.print if console else print
+
     pending = [r for r in records if r.review_decision == "pending"]
     decided = [r for r in records if r.review_decision != "pending"]
 
     if not pending:
-        print("No pending items in review queue. Nothing to do.")
+        _echo("No pending items in review queue. Nothing to do.")
         return records
 
-    print(f"\nReview queue: {len(pending)} pending item(s).")
-    print("Controls: [p] pass  [f] fail  [s] skip  [q] quit and save\n")
+    _echo(f"\nReview queue: {len(pending)} pending item(s).")
+    _echo("Controls: [p] pass  [f] fail  [s] skip  [q] quit and save\n")
 
     for i, record in enumerate(pending, 1):
         req_id = record.requirement_id
@@ -314,10 +316,10 @@ def adjudicate(
             decision = input_fn("Decision [p=pass / f=fail / s=skip / q=quit]: ").strip().lower()
             if decision in ("p", "f", "s", "q"):
                 break
-            print("  Enter p, f, s, or q.")
+            _echo("  Enter p, f, s, or q.")
 
         if decision == "q":
-            print("Quitting. All decisions made so far will be saved.")
+            _echo("Quitting. All decisions made so far will be saved.")
             decided.append(record)
             decided.extend(pending[i:])
             break
@@ -354,9 +356,11 @@ def run(
         logger.error("Review queue not found: %s", queue_path)
         raise SystemExit(1)
 
+    _echo = console.print if console else print
+
     records = load_queue(queue_path)
     if not records:
-        print(f"Review queue is empty: {queue_path}")
+        _echo(f"Review queue is empty: {queue_path}")
         return
 
     resolved_gold = _resolve_gold_path(gold_path, run_id, runs_dir)
@@ -370,7 +374,7 @@ def run(
     write_adjudicated(updated, run_id, reviews_dir)
 
     decided_count = sum(1 for r in updated if r.review_decision != "pending")
-    print(f"\nSession complete. {decided_count}/{len(updated)} item(s) adjudicated.")
+    _echo(f"\nSession complete. {decided_count}/{len(updated)} item(s) adjudicated.")
 
 
 def main() -> None:

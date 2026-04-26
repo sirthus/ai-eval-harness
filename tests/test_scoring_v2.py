@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from harness.heuristic_scorer import (
-    _compute_diagnostics,
+    compute_diagnostics as _compute_diagnostics,
+)
+from harness.heuristic_scorer import (
     score,
     score_correctness,
     score_reviewer_usefulness,
