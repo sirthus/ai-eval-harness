@@ -24,13 +24,13 @@ from harness.schemas import (
     ScoredResult,
 )
 
-_DEFAULT_WEIGHTS: dict[str, float] = {
+DEFAULT_WEIGHTS: dict[str, float] = {
     "correctness": 0.35,
     "completeness": 0.30,
     "hallucination_risk": 0.20,
     "reviewer_usefulness": 0.15,
 }
-_DEFAULT_THRESHOLDS = {
+DEFAULT_THRESHOLDS = {
     "pass": 1.6,
     "borderline_low": 1.2,
     "floor": {
@@ -39,7 +39,7 @@ _DEFAULT_THRESHOLDS = {
         "hallucination_risk": 1.0,
     },
 }
-_DEFAULT_DIAGNOSTICS: dict[str, bool] = {
+DEFAULT_DIAGNOSTICS: dict[str, bool] = {
     "flag_long_expected_result": False,
     "flag_low_step_verbosity": False,
 }
@@ -106,7 +106,7 @@ def _phrase_match(phrase: str, text: str) -> bool:
     return phrase.lower() in text
 
 
-def _disallowed_hits(output: ModelOutput, gold: GoldAnnotation) -> list[str]:
+def disallowed_hits(output: ModelOutput, gold: GoldAnnotation) -> list[str]:
     """Return disallowed assumption phrases found verbatim in model output.
 
     Uses exact substring matching to avoid false positives when the model
@@ -196,7 +196,7 @@ def score_reviewer_usefulness(output: ModelOutput) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _compute_diagnostics(
+def compute_diagnostics(
     output: ModelOutput,
     cfg: dict[str, bool],
 ) -> str:
@@ -235,12 +235,12 @@ def score(
     thresholds: dict[str, Any] | None = None,
     diagnostics: dict[str, bool] | None = None,
 ) -> ScoredResult:
-    w = weights or _DEFAULT_WEIGHTS
-    t = thresholds or _DEFAULT_THRESHOLDS
-    diag_cfg = diagnostics or _DEFAULT_DIAGNOSTICS
+    w = weights or DEFAULT_WEIGHTS
+    t = thresholds or DEFAULT_THRESHOLDS
+    diag_cfg = diagnostics or DEFAULT_DIAGNOSTICS
 
     ratio = _coverage_ratio(output, gold)
-    hits = _disallowed_hits(output, gold)
+    hits = disallowed_hits(output, gold)
 
     completeness = score_completeness(ratio)
     correctness = score_correctness(output, hits)
@@ -285,7 +285,7 @@ def score(
         hit_note = f"Disallowed assumption(s) found: {hits}"
         notes = f"{notes}; {hit_note}".lstrip("; ")
 
-    diagnostic_notes = _compute_diagnostics(output, diag_cfg)
+    diagnostic_notes = compute_diagnostics(output, diag_cfg)
 
     return ScoredResult(
         requirement_id=output.requirement_id,

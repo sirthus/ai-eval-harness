@@ -46,6 +46,11 @@ def _get_anthropic_api_key() -> str:
     return api_key
 
 
+def validate_api_key() -> None:
+    """Raise OSError immediately if ANTHROPIC_API_KEY is not set."""
+    _get_anthropic_api_key()
+
+
 def get_anthropic_client() -> anthropic.Anthropic:
     """Create and return an Anthropic client using the configured API key."""
     return anthropic.Anthropic(api_key=_get_anthropic_api_key())

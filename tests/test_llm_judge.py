@@ -268,6 +268,7 @@ class TestScore:
         mock_client.messages.create.side_effect = api_error
         mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
         mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        mocker.patch("harness.llm_judge.time.sleep")
         scorer = LLMJudgeScorer()
         output = _make_output()
         gold = _make_gold()
@@ -463,3 +464,80 @@ class TestScore:
         result = scorer.score(output, gold)
         # Only 1 gold point; it was covered → ratio = 1/1 = 1.0
         assert result.coverage_ratio == 1.0
+
+
+class TestHeuristicFallback:
+    def test_fallback_triggered_after_all_api_retries_exhausted(self, mocker):
+        """When the judge API raises APIError on every attempt, score() falls back to heuristic."""
+        api_error = anthropic.APIStatusError(
+            message="Service Unavailable",
+            response=MagicMock(status_code=503),
+            body={},
+        )
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = api_error
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        mocker.patch("harness.llm_judge.time.sleep")
+
+        scorer = LLMJudgeScorer()
+        output = _make_output()
+        gold = _make_gold()
+
+        result = scorer.score(output, gold)
+
+        # Fallback should return a valid ScoredResult
+        from harness.schemas import ScoredResult
+        assert isinstance(result, ScoredResult)
+        assert result.requirement_id == output.requirement_id
+
+        # All three attempts were made before falling back
+        assert mock_client.messages.create.call_count == 3
+
+    def test_fallback_result_matches_heuristic(self, mocker):
+        """The fallback result should equal what the heuristic scorer produces directly."""
+        from harness import heuristic_scorer
+
+        api_error = anthropic.APIStatusError(
+            message="Bad Gateway",
+            response=MagicMock(status_code=502),
+            body={},
+        )
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = api_error
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        mocker.patch("harness.llm_judge.time.sleep")
+
+        output = _make_output()
+        gold = _make_gold()
+
+        judge_result = LLMJudgeScorer().score(output, gold)
+        heuristic_result = heuristic_scorer.score(output, gold)
+
+        assert judge_result.decision == heuristic_result.decision
+        assert judge_result.weighted_score == heuristic_result.weighted_score
+        assert judge_result.coverage_ratio == heuristic_result.coverage_ratio
+
+    def test_fallback_warning_is_logged(self, mocker, caplog):
+        """A warning naming the fallback cause should be emitted."""
+        import logging
+
+        api_error = anthropic.APIStatusError(
+            message="Service Unavailable",
+            response=MagicMock(status_code=503),
+            body={},
+        )
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = api_error
+        mocker.patch("harness.llm_judge.anthropic.Anthropic", return_value=mock_client)
+        mocker.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
+        mocker.patch("harness.llm_judge.time.sleep")
+
+        output = _make_output()
+        gold = _make_gold()
+
+        with caplog.at_level(logging.WARNING, logger="harness.llm_judge"):
+            LLMJudgeScorer().score(output, gold)
+
+        assert any("falling back to heuristic scorer" in r.message for r in caplog.records)

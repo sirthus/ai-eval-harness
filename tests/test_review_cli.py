@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from harness.review_cli import _load_model_output, _load_scored_result, adjudicate
+from harness.review_cli import _load_model_output, _load_scored_result, _resolve_repo_relative_path, adjudicate
 from harness.review_queue import load_queue, write_queue
 from harness.schemas import DimensionScores, ModelOutput, ReviewRecord, ScoredResult, TestCase
 
@@ -358,3 +358,44 @@ class TestGoldPathResolution:
         out = capsys.readouterr().out
         assert "Review queue is empty" in out
         assert not (queue_dir / "adjudicated.jsonl").exists()
+
+
+# ---------------------------------------------------------------------------
+# _resolve_repo_relative_path
+# ---------------------------------------------------------------------------
+
+
+class TestResolveRepoRelativePath:
+    def test_absolute_path_returned_as_is(self, tmp_path):
+        target = tmp_path / "gold.jsonl"
+        target.touch()
+        config_path = tmp_path / "configs" / "run.yaml"
+        result = _resolve_repo_relative_path(str(target), config_path)
+        assert result == target
+
+    def test_relative_path_found_via_config_parent(self, tmp_path):
+        # Layout: tmp_path/configs/run.yaml, tmp_path/configs/gold.jsonl
+        config_dir = tmp_path / "configs"
+        config_dir.mkdir()
+        gold = config_dir / "gold.jsonl"
+        gold.touch()
+        config_path = config_dir / "run.yaml"
+        result = _resolve_repo_relative_path("gold.jsonl", config_path)
+        assert result == gold
+
+    def test_relative_path_found_via_config_grandparent(self, tmp_path):
+        # Layout: tmp_path/configs/run.yaml, tmp_path/gold.jsonl
+        config_dir = tmp_path / "configs"
+        config_dir.mkdir()
+        gold = tmp_path / "gold.jsonl"
+        gold.touch()
+        config_path = config_dir / "run.yaml"
+        result = _resolve_repo_relative_path("gold.jsonl", config_path)
+        assert result == gold
+
+    def test_no_candidate_exists_returns_first(self, tmp_path):
+        config_path = tmp_path / "configs" / "run.yaml"
+        result = _resolve_repo_relative_path("missing.jsonl", config_path)
+        # Falls back to the raw path (first candidate) — no error raised
+        from pathlib import Path
+        assert result == Path("missing.jsonl")

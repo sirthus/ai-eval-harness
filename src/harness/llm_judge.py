@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,8 @@ from harness.schemas import (
 logger = logging.getLogger(__name__)
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
+_MAX_ATTEMPTS = 3
+_BACKOFF_SECONDS = [1, 2, 4]
 
 
 class LLMJudgeScorerError(Exception):
@@ -127,7 +130,7 @@ class LLMJudgeScorer:
         )
 
     def _call_judge(self, prompt: str, requirement_id: str) -> str:
-        """Call judge model API. Raises on API failure (no retry — caller handles fallback)."""
+        """Call judge model API with retry. Raises LLMJudgeScorerError after all attempts fail."""
         has_system_marker = "### SYSTEM ###" in prompt
         has_user_marker = "### USER ###" in prompt
         if has_system_marker != has_user_marker:
@@ -158,15 +161,31 @@ class LLMJudgeScorer:
         if system_text:
             create_kwargs["system"] = system_text
 
-        message = client.messages.create(**create_kwargs)
-        try:
-            return extract_text_content(
-                message,
-                requirement_id=requirement_id,
-                source="Judge response",
-            )
-        except ValueError as exc:
-            raise LLMJudgeScorerError(str(exc)) from exc
+        last_exc: anthropic.APIError | None = None
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                message = client.messages.create(**create_kwargs)
+                try:
+                    return extract_text_content(
+                        message,
+                        requirement_id=requirement_id,
+                        source="Judge response",
+                    )
+                except ValueError as exc:
+                    raise LLMJudgeScorerError(str(exc)) from exc
+            except anthropic.APIError as exc:
+                last_exc = exc
+                if attempt < _MAX_ATTEMPTS - 1:
+                    wait = _BACKOFF_SECONDS[attempt]
+                    logger.warning(
+                        "Judge API error for %s (attempt %d/%d), retrying in %ds: %s",
+                        requirement_id, attempt + 1, _MAX_ATTEMPTS, wait, exc,
+                    )
+                    time.sleep(wait)
+
+        raise LLMJudgeScorerError(
+            f"Judge API failed for {requirement_id} after {_MAX_ATTEMPTS} attempts"
+        ) from last_exc
 
     def _parse_verdict(self, raw: str, requirement_id: str) -> LLMJudgeVerdict:
         """Parse judge JSON verdict. Raises LLMJudgeScorerError on malformed output."""
@@ -211,9 +230,9 @@ class LLMJudgeScorer:
         diagnostics: dict[str, bool] | None,
     ) -> ScoredResult:
         """Map LLMJudgeVerdict to ScoredResult using existing scoring framework."""
-        w = weights or heuristic_scoring._DEFAULT_WEIGHTS
-        t = thresholds or heuristic_scoring._DEFAULT_THRESHOLDS
-        diag_cfg = diagnostics or heuristic_scoring._DEFAULT_DIAGNOSTICS
+        w = weights or heuristic_scoring.DEFAULT_WEIGHTS
+        t = thresholds or heuristic_scoring.DEFAULT_THRESHOLDS
+        diag_cfg = diagnostics or heuristic_scoring.DEFAULT_DIAGNOSTICS
 
         # Completeness derived from gold's required_coverage_points as the authoritative
         # denominator. The judge may return fewer assessments than there are gold points
@@ -272,8 +291,8 @@ class LLMJudgeScorer:
             scoring_notes = judge_notes
 
         # Disallowed hits: re-compute heuristically for audit consistency in reports
-        disallowed_hits = heuristic_scoring._disallowed_hits(output, gold)
-        diagnostic_notes = heuristic_scoring._compute_diagnostics(output, diag_cfg)
+        disallowed_hits = heuristic_scoring.disallowed_hits(output, gold)
+        diagnostic_notes = heuristic_scoring.compute_diagnostics(output, diag_cfg)
 
         return ScoredResult(
             requirement_id=output.requirement_id,
