@@ -69,7 +69,7 @@ flowchart LR
     G --> H
 ```
 
-![Synthetic CLI run summary](docs/assets/cli_run_summary.svg)
+![Synthetic CLI run summary](docs/assets/cli_run_summary.svg?v=2)
 
 ## See It In 60 Seconds
 
