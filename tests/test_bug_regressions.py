@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from harness import run_eval
 from harness.heuristic_scorer import HeuristicScorer
 from harness.run_eval import _compute_quality_gate
 from harness.schemas import DimensionScores, GoldAnnotation, ModelOutput, RunManifest, ScoredResult
@@ -104,6 +105,81 @@ class TestQualityGateDecisionPersisted:
 
     def test_quality_gate_logic_pass_exact_boundary(self):
         assert _compute_quality_gate(0.70, 0, 0) == "pass"
+
+    def test_quality_gate_logic_missing_requirements_blocks_pass(self):
+        assert _compute_quality_gate(0.80, 0, 0, missing_requirements=1) == "needs_review"
+
+    def test_manifest_schema_tracks_missing_requirements(self):
+        m = make_run_manifest(missing_requirements=2)
+        restored = RunManifest.model_validate(json.loads(m.model_dump_json()))
+        assert restored.missing_requirements == 2
+
+    def test_full_run_manifest_tracks_missing_and_fallbacks(self, tmp_path, mocker):
+        dataset_path = tmp_path / "requirements.jsonl"
+        dataset_path.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "requirement_id": "REQ-001",
+                            "requirement_text": "First requirement",
+                            "domain_tag": "auth",
+                            "difficulty": "easy",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "requirement_id": "REQ-002",
+                            "requirement_text": "Second requirement",
+                            "domain_tag": "auth",
+                            "difficulty": "easy",
+                        }
+                    ),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    "run_id: run_case",
+                    "model_name: claude",
+                    "model_version: claude-test",
+                    "prompt_version: v2",
+                    "dataset_version: test",
+                    "scoring_version: v1",
+                    "threshold_version: v1",
+                    f"dataset_path: {dataset_path}",
+                    f"gold_path: {tmp_path / 'gold.jsonl'}",
+                    f"generated_dir: {tmp_path / 'generated'}",
+                    f"runs_dir: {tmp_path / 'runs'}",
+                    f"reviews_dir: {tmp_path / 'reviews'}",
+                    f"reports_dir: {tmp_path / 'reports'}",
+                    "scorer: llm-judge",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        result = make_scored_result(
+            requirement_id="REQ-001",
+            scorer_source="heuristic-fallback",
+            scorer_error="APIError: timeout",
+        )
+        mocker.patch("harness.run_eval._git_commit_hash", return_value="abc1234")
+        mocker.patch("harness.run_eval._git_is_dirty", return_value=False)
+        mocker.patch("harness.run_eval.generate.run", return_value=(tmp_path / "generated" / "run_case", []))
+        mocker.patch("harness.run_eval.evaluate.run", return_value=[result])
+        mocker.patch("harness.run_eval.review_queue.write_queue")
+        mocker.patch("harness.run_eval.report.write_report")
+
+        manifest = run_eval.run(str(config_path))
+
+        assert manifest.missing_requirements == 1
+        assert manifest.scorer_fallback_count == 1
+        assert manifest.quality_gate_decision == "needs_review"
+        assert manifest.config_file == str(config_path.resolve())
 
     def test_manifest_schema_has_is_dirty_field(self):
         m = make_run_manifest(is_dirty=True)

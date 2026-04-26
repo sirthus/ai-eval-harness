@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -85,6 +86,30 @@ class TestLoadScoredResults:
 
         assert set(loaded.keys()) == {"REQ-001", "REQ-002"}
 
+    def test_missing_scorer_provenance_fields_use_defaults(self, tmp_path):
+        run_dir = tmp_path / "run_legacy"
+        run_dir.mkdir(parents=True)
+        payload = [
+            {
+                "requirement_id": "REQ-001",
+                "scores": {
+                    "correctness": 2.0,
+                    "completeness": 2.0,
+                    "hallucination_risk": 2.0,
+                    "reviewer_usefulness": 1.0,
+                },
+                "weighted_score": 1.8,
+                "decision": "pass",
+                "coverage_ratio": 1.0,
+            }
+        ]
+        (run_dir / "scored_results.json").write_text(json.dumps(payload), encoding="utf-8")
+
+        loaded = load_scored_results(str(tmp_path), "run_legacy")
+
+        assert loaded["REQ-001"].scorer_source == "heuristic"
+        assert loaded["REQ-001"].scorer_error == ""
+
 
 # ---------------------------------------------------------------------------
 # load_requirements
@@ -162,3 +187,24 @@ class TestLoadConfig:
 
         assert cfg["run_id"] == "test_run"
         assert cfg["model_version"] == "claude-sonnet-4-6"
+
+    def test_repo_config_paths_resolve_from_repo_root_when_cwd_differs(self, tmp_path, monkeypatch):
+        repo_root = Path(__file__).resolve().parents[1]
+        config_path = repo_root / "configs" / "run_v1.yaml"
+        monkeypatch.chdir(tmp_path)
+
+        cfg = load_config(config_path)
+
+        assert cfg["dataset_path"] == str(repo_root / "data" / "requirements" / "mvp_dataset.jsonl")
+        assert cfg["generated_dir"] == str(repo_root / "data" / "generated")
+        assert cfg["reports_dir"] == str(repo_root / "reports")
+
+    def test_absolute_config_paths_remain_absolute(self, tmp_path):
+        dataset_path = tmp_path / "requirements.jsonl"
+        f = tmp_path / "cfg.yaml"
+        f.write_text(f"dataset_path: {dataset_path}\nreports_dir: reports\n", encoding="utf-8")
+
+        cfg = load_config(str(f))
+
+        assert cfg["dataset_path"] == str(dataset_path)
+        assert cfg["reports_dir"] == str(tmp_path / "reports")

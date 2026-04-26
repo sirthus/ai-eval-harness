@@ -54,7 +54,8 @@ class LLMJudgeScorerError(Exception):
 class LLMJudgeScorer:
     """Score a ModelOutput against GoldAnnotation using a second LLM call.
 
-    Falls back to the heuristic scorer on API failure and logs a warning.
+    Falls back to the heuristic scorer on API failure, logs a warning, and
+    marks the returned result with fallback provenance.
     """
 
     def __init__(
@@ -69,6 +70,7 @@ class LLMJudgeScorer:
         self.max_tokens = max_tokens
         self.sidecar_dir = sidecar_dir
         self._client: anthropic.Anthropic | None = None
+        self.fallback_count = 0
 
     def score(
         self,
@@ -86,16 +88,24 @@ class LLMJudgeScorer:
             result = self._to_scored_result(verdict, output, gold, weights, thresholds, diagnostics)
             if self.sidecar_dir:
                 self._write_sidecar(verdict)
-            return result
+            return result.model_copy(update={"scorer_source": "llm-judge", "scorer_error": ""})
         except (OSError, anthropic.APIError, LLMJudgeScorerError) as exc:
+            self.fallback_count += 1
+            scorer_error = _format_scorer_error(exc)
             logger.warning(
                 "LLM judge failed for %s (%s: %s) — falling back to heuristic scorer",
                 output.requirement_id,
                 type(exc).__name__,
                 exc,
             )
-            return heuristic_scoring.score(
+            result = heuristic_scoring.score(
                 output, gold, weights=weights, thresholds=thresholds, diagnostics=diagnostics
+            )
+            return result.model_copy(
+                update={
+                    "scorer_source": "heuristic-fallback",
+                    "scorer_error": scorer_error,
+                }
             )
 
     def _get_client(self) -> anthropic.Anthropic:
@@ -314,3 +324,11 @@ class LLMJudgeScorer:
         sidecar_path = sidecar_dir / f"{verdict.requirement_id}.judge.json"
         sidecar_path.write_text(verdict.model_dump_json(indent=2), encoding="utf-8")
         logger.debug("Judge verdict sidecar written: %s", sidecar_path)
+
+
+def _format_scorer_error(exc: Exception) -> str:
+    """Return compact, table-safe scorer error provenance."""
+    message = " ".join(str(exc).split())
+    if len(message) > 300:
+        message = f"{message[:297]}..."
+    return f"{type(exc).__name__}: {message}" if message else type(exc).__name__

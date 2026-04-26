@@ -71,3 +71,25 @@ class TestLoadGenerated:
 
         with pytest.raises(ValidationError):
             _load_generated(tmp_path)
+
+    def test_filename_payload_requirement_id_mismatch_raises(self, tmp_path: Path):
+        (tmp_path / "REQ-001.json").write_text(
+            json.dumps(_model_output("REQ-999")),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="requirement_id mismatch"):
+            _load_generated(tmp_path)
+
+    def test_duplicate_payload_requirement_id_raises(self, tmp_path: Path):
+        (tmp_path / "REQ-001.json").write_text(
+            json.dumps(_model_output("REQ-001")),
+            encoding="utf-8",
+        )
+        (tmp_path / "REQ-002.json").write_text(
+            json.dumps(_model_output("REQ-001")),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="Duplicate generated output"):
+            _load_generated(tmp_path)

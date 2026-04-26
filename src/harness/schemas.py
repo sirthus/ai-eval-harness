@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ---------------------------------------------------------------------------
 # LLM output schema
@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 
 class TestCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str
     preconditions: list[str]
     steps: list[str]
@@ -21,6 +23,8 @@ class TestCase(BaseModel):
 
 
 class ModelOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     requirement_id: Annotated[str, Field(pattern=r"^[\w\-\.]+$")]
     test_cases: Annotated[list[TestCase], Field(min_length=1)]
     assumptions: list[str] = Field(default_factory=list)
@@ -71,6 +75,8 @@ class ScoredResult(BaseModel):
     disallowed_hits: list[str] = Field(default_factory=list)
     scoring_notes: str = ""
     diagnostic_notes: str = ""
+    scorer_source: Literal["heuristic", "llm-judge", "heuristic-fallback"] = "heuristic"
+    scorer_error: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +97,7 @@ class RunManifest(BaseModel):
     config_file: str
     total_requirements: int = 0
     parse_failures: int = 0
+    missing_requirements: int = 0
     total_evaluated: int = 0
     pass_count: int = 0
     borderline_count: int = 0
