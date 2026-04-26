@@ -164,6 +164,13 @@ def _load_generated(directory: Path) -> dict[str, ModelOutput]:
             continue
         data = json.loads(json_file.read_text(encoding="utf-8"))
         output = ModelOutput.model_validate(data)
+        if output.requirement_id in outputs:
+            raise ValueError(f"Duplicate generated output for {output.requirement_id}")
+        if output.requirement_id != json_file.stem:
+            raise ValueError(
+                "Generated artifact requirement_id mismatch: "
+                f"{json_file.name} contains {output.requirement_id}"
+            )
         outputs[output.requirement_id] = output
     return outputs
 

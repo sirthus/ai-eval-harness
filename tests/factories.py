@@ -79,12 +79,14 @@ def make_run_manifest(
     config_file: str = "configs/run_v2.yaml",
     total_requirements: int = 10,
     parse_failures: int = 0,
+    missing_requirements: int = 0,
     total_evaluated: int = 10,
     pass_count: int = 8,
     borderline_count: int = 1,
     fail_count: int = 1,
     avg_weighted_score: float = 1.72,
     scorer_type: str = "heuristic",
+    scorer_fallback_count: int = 0,
     quality_gate_decision: str = "needs_review",
     **extra,
 ) -> RunManifest:
@@ -101,12 +103,14 @@ def make_run_manifest(
         config_file=config_file,
         total_requirements=total_requirements,
         parse_failures=parse_failures,
+        missing_requirements=missing_requirements,
         total_evaluated=total_evaluated,
         pass_count=pass_count,
         borderline_count=borderline_count,
         fail_count=fail_count,
         avg_weighted_score=avg_weighted_score,
         scorer_type=scorer_type,
+        scorer_fallback_count=scorer_fallback_count,
         quality_gate_decision=quality_gate_decision,
         **extra,
     )
@@ -121,6 +125,8 @@ def make_scored_result(
     completeness: float = 2.0,
     hallucination_risk: float = 2.0,
     reviewer_usefulness: float = 1.0,
+    scorer_source: str = "heuristic",
+    scorer_error: str = "",
 ) -> ScoredResult:
     return ScoredResult(
         requirement_id=requirement_id,
@@ -133,6 +139,8 @@ def make_scored_result(
         weighted_score=weighted_score,
         decision=decision,
         coverage_ratio=coverage_ratio,
+        scorer_source=scorer_source,
+        scorer_error=scorer_error,
     )
 
 

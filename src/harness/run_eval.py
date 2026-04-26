@@ -22,8 +22,8 @@ from __future__ import annotations
 import argparse
 import logging
 import subprocess
-import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Literal
 
 from harness import evaluate, generate, report, review_queue
@@ -79,13 +79,19 @@ def _compute_quality_gate(
     pass_rate: float,
     borderlines: int,
     parse_failures: int,
+    missing_requirements: int = 0,
 ) -> Literal["pass", "needs_review", "fail"]:
     """Compute run-level quality gate decision from aggregate outcomes."""
-    if pass_rate >= 0.70 and borderlines <= 2 and parse_failures == 0:
+    if (
+        pass_rate >= 0.70
+        and borderlines <= 2
+        and parse_failures == 0
+        and missing_requirements == 0
+    ):
         return "pass"
     if pass_rate < 0.40:
         return "fail"
-    if borderlines > 0 or parse_failures > 0:
+    if borderlines > 0 or parse_failures > 0 or missing_requirements > 0:
         return "needs_review"
     # 40–69% pass rate, no borderlines, no parse failures — not bad enough to fail,
     # but not strong enough to pass outright.
@@ -114,8 +120,11 @@ def run(config_path: str) -> RunManifest:
     results = evaluate.run(config_path, run_id=run_id)
 
     if not results and not parse_failure_ids:
-        logger.error("No results produced — check generated outputs.")
-        sys.exit(1)
+        logger.warning("No scored results produced; quality gate will fail.")
+
+    # Load total requirements count from dataset
+    with open(cfg["dataset_path"], encoding="utf-8") as f:
+        total_requirements = sum(1 for line in f if line.strip())
 
     # Step 3: Review queue
     logger.info("--- Step 3: Review queue ---")
@@ -128,22 +137,21 @@ def run(config_path: str) -> RunManifest:
     # Step 4: Report
     logger.info("--- Step 4: Report ---")
 
-    # Load total requirements count from dataset
-    with open(cfg["dataset_path"], encoding="utf-8") as f:
-        total_requirements = sum(1 for line in f if line.strip())
-
     passes = sum(1 for r in results if r.decision == "pass")
     borderlines = sum(1 for r in results if r.decision == "borderline")
     fails = sum(1 for r in results if r.decision == "fail")
     avg_score = sum(r.weighted_score for r in results) / len(results) if results else 0.0
     parse_failure_count = len(parse_failure_ids)
+    scorer_fallback_count = sum(1 for r in results if r.scorer_source == "heuristic-fallback")
 
     evaluated = len(results)
-    pass_rate = passes / evaluated if evaluated else 0.0
+    missing_requirements = max(0, total_requirements - evaluated - parse_failure_count)
+    pass_rate = passes / total_requirements if total_requirements else 0.0
     quality_gate_decision = _compute_quality_gate(
         pass_rate,
         borderlines,
         parse_failure_count,
+        missing_requirements,
     )
 
     manifest = RunManifest(
@@ -157,15 +165,17 @@ def run(config_path: str) -> RunManifest:
         timestamp=timestamp.isoformat(),
         git_commit_hash=git_hash,
         is_dirty=git_dirty,
-        config_file=config_path,
+        config_file=str(Path(config_path).expanduser().resolve()),
         total_requirements=total_requirements,
         parse_failures=parse_failure_count,
+        missing_requirements=missing_requirements,
         total_evaluated=len(results),
         pass_count=passes,
         borderline_count=borderlines,
         fail_count=fails,
         avg_weighted_score=round(avg_score, 4),
         scorer_type=cfg.get("scorer", "heuristic"),
+        scorer_fallback_count=scorer_fallback_count,
         quality_gate_decision=quality_gate_decision,
     )
     report.write_report(results, manifest, cfg["reports_dir"])
@@ -179,13 +189,15 @@ def run(config_path: str) -> RunManifest:
     # Summary
     logger.info("=== Run complete: %s ===", run_id)
     logger.info(
-        "Results: %d/%d evaluated | %d pass / %d borderline / %d fail | %d parse failure(s) | avg score %.2f",
+        "Results: %d/%d evaluated | %d pass / %d borderline / %d fail | "
+        "%d parse failure(s) | %d missing | avg score %.2f",
         len(results),
         total_requirements,
         passes,
         borderlines,
         fails,
         len(parse_failure_ids),
+        missing_requirements,
         avg_score,
     )
 
