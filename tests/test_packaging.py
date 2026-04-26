@@ -18,7 +18,7 @@ def test_wheel_includes_prompt_templates(tmp_path):
     existed_before = {path: path.exists() for path in generated_paths}
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             [
                 sys.executable,
                 "-m",
@@ -30,10 +30,10 @@ def test_wheel_includes_prompt_templates(tmp_path):
                 str(tmp_path),
                 str(repo_root),
             ],
-            check=True,
             capture_output=True,
             text=True,
         )
+        assert result.returncode == 0, result.stdout + result.stderr
     finally:
         for path in generated_paths:
             if not existed_before[path] and path.exists():

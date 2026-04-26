@@ -32,6 +32,8 @@ dev = [
     "pytest-cov",
     "pytest-mock>=3.0",
     "ruff>=0.4",
+    "setuptools>=68",
+    "wheel>=0.42",
 ]
 
 [tool.setuptools.packages.find]
