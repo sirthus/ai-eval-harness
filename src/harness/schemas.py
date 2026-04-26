@@ -104,6 +104,7 @@ class RunManifest(BaseModel):
     fail_count: int = 0
     avg_weighted_score: float = 0.0
     scorer_type: Literal["heuristic", "llm-judge"] = "heuristic"
+    scorer_fallback_count: int = 0
     is_dirty: bool = False
     quality_gate_decision: Literal["pass", "fail", "needs_review"] = "needs_review"
 

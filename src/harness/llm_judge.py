@@ -328,7 +328,8 @@ class LLMJudgeScorer:
 
 def _format_scorer_error(exc: Exception) -> str:
     """Return compact, table-safe scorer error provenance."""
-    message = " ".join(str(exc).split())
+    source = exc.__cause__ if isinstance(exc.__cause__, anthropic.APIError) else exc
+    message = " ".join(str(source).split())
     if len(message) > 300:
         message = f"{message[:297]}..."
-    return f"{type(exc).__name__}: {message}" if message else type(exc).__name__
+    return f"{type(source).__name__}: {message}" if message else type(source).__name__

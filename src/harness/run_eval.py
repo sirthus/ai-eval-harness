@@ -122,10 +122,6 @@ def run(config_path: str) -> RunManifest:
     if not results and not parse_failure_ids:
         logger.warning("No scored results produced; quality gate will fail.")
 
-    # Load total requirements count from dataset
-    with open(cfg["dataset_path"], encoding="utf-8") as f:
-        total_requirements = sum(1 for line in f if line.strip())
-
     # Step 3: Review queue
     logger.info("--- Step 3: Review queue ---")
     review_queue.write_queue(
