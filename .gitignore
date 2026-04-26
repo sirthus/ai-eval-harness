@@ -20,6 +20,8 @@ reports/**
 
 # AI tool instruction files (machine-generated, duplicates CLAUDE.md)
 AGENTS.md
+.codex
+.codex/
 
 # Python
 .venv/

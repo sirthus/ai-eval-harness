@@ -424,7 +424,7 @@ def run(
         fieldnames.append("human_decision")
 
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for req_id, history in sorted(trend.per_requirement_history.items()):
             for entry in history:

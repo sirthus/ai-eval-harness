@@ -87,7 +87,7 @@ def _write_csv(
         fieldnames.append("human_decision")
 
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for r in sorted(results, key=lambda x: x.requirement_id):
             row = {
