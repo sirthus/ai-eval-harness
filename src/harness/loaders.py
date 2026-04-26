@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 import yaml
 
@@ -11,6 +12,15 @@ from harness.paths import ArtifactPaths, manifest_path
 from harness.schemas import Requirement, RunManifest, ScoredResult
 
 logger = logging.getLogger(__name__)
+
+_CONFIG_PATH_KEYS = {
+    "dataset_path",
+    "gold_path",
+    "generated_dir",
+    "runs_dir",
+    "reviews_dir",
+    "reports_dir",
+}
 
 
 def load_manifest(runs_dir: str, run_id: str) -> RunManifest:
@@ -55,7 +65,43 @@ def load_requirements(dataset_path: str) -> list[Requirement]:
     return reqs
 
 
-def load_config(config_path: str) -> dict:
+def _find_repo_root(start: Path) -> Path | None:
+    """Return the nearest ancestor containing pyproject.toml."""
+    for candidate in (start, *start.parents):
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    return None
+
+
+def _resolve_config_path_value(value: object, base_dir: Path) -> object:
+    if not isinstance(value, str):
+        return value
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return str(path)
+    return str((base_dir / path).resolve())
+
+
+def load_config(config_path: str | Path) -> dict:
     """Load and return a YAML run config."""
-    with open(config_path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    resolved_config_path = Path(config_path).expanduser().resolve()
+    with open(resolved_config_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+
+    if not isinstance(cfg, dict):
+        return cfg
+
+    base_dir = _find_repo_root(resolved_config_path.parent)
+    if base_dir is None:
+        base_dir = resolved_config_path.parent
+        logger.warning(
+            "No pyproject.toml found above %s; resolving config paths relative to %s",
+            resolved_config_path,
+            base_dir,
+        )
+
+    resolved = dict(cfg)
+    for key in _CONFIG_PATH_KEYS:
+        if key in resolved:
+            resolved[key] = _resolve_config_path_value(resolved[key], base_dir)
+    return resolved

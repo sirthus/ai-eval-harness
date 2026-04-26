@@ -6,7 +6,12 @@ from harness.report import write_report
 from harness.schemas import DimensionScores, ReviewRecord, RunManifest, ScoredResult
 
 
-def _result(req_id: str, decision: str) -> ScoredResult:
+def _result(
+    req_id: str,
+    decision: str,
+    scoring_notes: str = "",
+    diagnostic_notes: str = "",
+) -> ScoredResult:
     return ScoredResult(
         requirement_id=req_id,
         scores=DimensionScores(
@@ -19,8 +24,8 @@ def _result(req_id: str, decision: str) -> ScoredResult:
         decision=decision,
         coverage_ratio={"pass": 1.0, "borderline": 0.67, "fail": 0.33}[decision],
         disallowed_hits=[],
-        scoring_notes="",
-        diagnostic_notes="",
+        scoring_notes=scoring_notes,
+        diagnostic_notes=diagnostic_notes,
     )
 
 
@@ -171,3 +176,30 @@ class TestReportHumanReviewOverlay:
         assert "| Post-review outlook |" in quality_gate
         assert "Recommended for assisted internal use with reviewer oversight" in quality_gate
         assert "not persisted to the manifest" in quality_gate
+
+    def test_per_sample_markdown_table_escapes_pipes_and_newlines(self, tmp_path):
+        results = [
+            _result(
+                "REQ-001",
+                "fail",
+                scoring_notes="judge | rationale\nsecond line",
+                diagnostic_notes="diagnostic | detail\nnext line",
+            )
+        ]
+
+        _, md_path = write_report(results, _manifest(), str(tmp_path))
+        markdown = md_path.read_text(encoding="utf-8")
+
+        assert "judge \\| rationale<br>second line" in markdown
+        assert "diagnostic \\| detail<br>next line" in markdown
+
+    def test_run_summary_shows_missing_requirements_and_scorer_fallbacks(self, tmp_path):
+        manifest = _manifest()
+        manifest.missing_requirements = 1
+        manifest.scorer_fallback_count = 2
+
+        _, md_path = write_report([_result("REQ-001", "pass")], manifest, str(tmp_path))
+        markdown = md_path.read_text(encoding="utf-8")
+
+        assert "| Missing requirements | 1 |" in markdown
+        assert "| Scorer fallbacks | 2 |" in markdown

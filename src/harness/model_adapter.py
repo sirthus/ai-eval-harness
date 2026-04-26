@@ -171,4 +171,10 @@ def _parse_output(raw_text: str, requirement_id: str) -> ModelOutput:
             f"Model output for {requirement_id} failed schema validation: {exc}"
         ) from exc
 
+    if output.requirement_id != requirement_id:
+        raise ValueError(
+            "Model output requirement_id mismatch: "
+            f"expected {requirement_id}, got {output.requirement_id}"
+        )
+
     return output

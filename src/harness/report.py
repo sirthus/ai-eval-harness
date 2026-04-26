@@ -163,15 +163,38 @@ def _quality_gate_supporting_context(
     counts: dict[str, int],
     total: int,
     parse_failures: int,
+    missing_requirements: int = 0,
 ) -> str:
     if total == 0:
-        return f"No scored samples. Parse failures: {parse_failures}."
+        return (
+            f"No scored samples. Parse failures: {parse_failures}. "
+            f"Missing requirements: {missing_requirements}."
+        )
     return (
         f"Pass {counts['pass']} ({counts['pass'] / total:.0%}), "
         f"borderline {counts['borderline']} ({counts['borderline'] / total:.0%}), "
         f"fail {counts['fail']} ({counts['fail'] / total:.0%}), "
-        f"parse failures {parse_failures}."
+        f"parse failures {parse_failures}, missing requirements {missing_requirements}."
     )
+
+
+def _markdown_table_cell(value: object) -> str:
+    """Escape and normalize dynamic content for markdown table cells."""
+    if value is None:
+        return "—"
+    text = str(value).strip()
+    if not text:
+        return "—"
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = "<br>".join(part.strip() for part in text.split("\n"))
+    return text.replace("|", r"\|")
+
+
+def _markdown_inline_text(value: object) -> str:
+    """Normalize dynamic prose snippets that should stay on one markdown line."""
+    if value is None:
+        return ""
+    return " ".join(str(value).split())
 
 
 def _post_review_decisions(
@@ -233,6 +256,7 @@ def _write_markdown(
 
     avg_weighted = sum(r.weighted_score for r in results) / total if total else 0.0
     avg_coverage = sum(r.coverage_ratio for r in results) / total if total else 0.0
+    quality_total = manifest.total_requirements or total
 
     post_review = _post_review_decisions(results, adjudicated or {})
     post_review_counts = _decision_counts(list(post_review.values())) if has_adjudications else None
@@ -246,16 +270,23 @@ def _write_markdown(
         "",
         "| Field | Value |",
         "|---|---|",
-        f"| Run ID | `{manifest.run_id}` |",
-        f"| Model | `{manifest.model_version}` |",
-        f"| Prompt version | `{manifest.prompt_version}` |",
-        f"| Dataset version | `{manifest.dataset_version}` |",
-        f"| Scoring version | `{manifest.scoring_version}` |",
-        f"| Timestamp | {manifest.timestamp} |",
-        f"| Git commit | `{manifest.git_commit_hash}` |",
-        f"| Config | `{manifest.config_file}` |",
+        f"| Run ID | {_markdown_table_cell(manifest.run_id)} |",
+        f"| Model | {_markdown_table_cell(manifest.model_version)} |",
+        f"| Prompt version | {_markdown_table_cell(manifest.prompt_version)} |",
+        f"| Dataset version | {_markdown_table_cell(manifest.dataset_version)} |",
+        f"| Scoring version | {_markdown_table_cell(manifest.scoring_version)} |",
+        f"| Scorer | {_markdown_table_cell(manifest.scorer_type)} |",
+        f"| Timestamp | {_markdown_table_cell(manifest.timestamp)} |",
+        f"| Git commit | {_markdown_table_cell(manifest.git_commit_hash)} |",
+        f"| Config | {_markdown_table_cell(manifest.config_file)} |",
+        f"| Total requirements | {manifest.total_requirements} |",
+        f"| Evaluated requirements | {manifest.total_evaluated} |",
+        f"| Parse failures | {manifest.parse_failures} |",
+        f"| Missing requirements | {manifest.missing_requirements} |",
         "",
     ]
+    if manifest.scorer_fallback_count:
+        lines.insert(-1, f"| Scorer fallbacks | {manifest.scorer_fallback_count} |")
 
     if chart_paths and "distribution" in chart_paths:
         lines += [f"![Score Distribution]({chart_paths['distribution'].name})", ""]
@@ -289,22 +320,42 @@ def _write_markdown(
         "",
     ]
     if has_adjudications and post_review_counts is not None:
+        auto_context = "Persisted manifest gate. " + _quality_gate_supporting_context(
+            auto_counts,
+            quality_total,
+            manifest.parse_failures,
+            manifest.missing_requirements,
+        )
+        post_review_context = (
+            "Derived from adjudicated sample decisions only; not persisted to the manifest. "
+            + _quality_gate_supporting_context(
+                post_review_counts,
+                quality_total,
+                manifest.parse_failures,
+                manifest.missing_requirements,
+            )
+        )
         lines += [
             "| View | Status | Notes |",
             "|---|---|---|",
-            f"| Auto (persisted gate) | {_quality_gate_label(manifest.quality_gate_decision)} | "
-            f"Persisted manifest gate. "
-            f"{_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)} |",
-            f"| Post-review outlook | {_quality_gate_recommendation(list(post_review.values()))} | "
-            f"Derived from adjudicated sample decisions only; not persisted to the manifest. "
-            f"{_quality_gate_supporting_context(post_review_counts, total, manifest.parse_failures)} |",
+            f"| {_markdown_table_cell('Auto (persisted gate)')} "
+            f"| {_markdown_table_cell(_quality_gate_label(manifest.quality_gate_decision))} "
+            f"| {_markdown_table_cell(auto_context)} |",
+            f"| {_markdown_table_cell('Post-review outlook')} "
+            f"| {_markdown_table_cell(_quality_gate_recommendation(list(post_review.values())))} "
+            f"| {_markdown_table_cell(post_review_context)} |",
             "",
         ]
     else:
+        auto_context = _quality_gate_supporting_context(
+            auto_counts,
+            quality_total,
+            manifest.parse_failures,
+            manifest.missing_requirements,
+        )
         lines += [
             f"Auto gate: {_quality_gate_label(manifest.quality_gate_decision)}",
-            f"Basis: persisted manifest gate. "
-            f"{_quality_gate_supporting_context(auto_counts, total, manifest.parse_failures)}",
+            f"Basis: persisted manifest gate. {auto_context}",
             "",
         ]
 
@@ -324,15 +375,17 @@ def _write_markdown(
             rec = adjudicated.get(r.requirement_id) if adjudicated else None
             human_dec = rec.review_decision if rec else "—"
             lines.append(
-                f"| {r.requirement_id} | {icon} {r.decision} | {human_dec} "
+                f"| {_markdown_table_cell(r.requirement_id)} "
+                f"| {_markdown_table_cell(f'{icon} {r.decision}')} "
+                f"| {_markdown_table_cell(human_dec)} "
                 f"| {r.weighted_score:.2f} "
                 f"| {r.scores.correctness:.1f} "
                 f"| {r.scores.completeness:.1f} "
                 f"| {r.scores.hallucination_risk:.1f} "
                 f"| {r.scores.reviewer_usefulness:.1f} "
                 f"| {r.coverage_ratio:.0%} "
-                f"| {r.scoring_notes or '—'} "
-                f"| {r.diagnostic_notes or '—'} |"
+                f"| {_markdown_table_cell(r.scoring_notes)} "
+                f"| {_markdown_table_cell(r.diagnostic_notes)} |"
             )
     else:
         lines += [
@@ -345,15 +398,16 @@ def _write_markdown(
         for r in sorted(results, key=lambda x: x.requirement_id):
             icon = {"pass": "✓", "borderline": "~", "fail": "✗"}.get(r.decision, "?")
             lines.append(
-                f"| {r.requirement_id} | {icon} {r.decision} "
+                f"| {_markdown_table_cell(r.requirement_id)} "
+                f"| {_markdown_table_cell(f'{icon} {r.decision}')} "
                 f"| {r.weighted_score:.2f} "
                 f"| {r.scores.correctness:.1f} "
                 f"| {r.scores.completeness:.1f} "
                 f"| {r.scores.hallucination_risk:.1f} "
                 f"| {r.scores.reviewer_usefulness:.1f} "
                 f"| {r.coverage_ratio:.0%} "
-                f"| {r.scoring_notes or '—'} "
-                f"| {r.diagnostic_notes or '—'} |"
+                f"| {_markdown_table_cell(r.scoring_notes)} "
+                f"| {_markdown_table_cell(r.diagnostic_notes)} |"
             )
     lines.append("")
 
@@ -366,7 +420,8 @@ def _write_markdown(
         ]
         if noted_records:
             for req_id, rec in noted_records:
-                lines.append(f"- **{req_id}** ({rec.review_decision}): {rec.reviewer_notes}")
+                notes = _markdown_inline_text(rec.reviewer_notes)
+                lines.append(f"- **{req_id}** ({rec.review_decision}): {notes}")
         else:
             lines.append("Adjudications were recorded, but no reviewer notes were captured.")
         lines.append("")

@@ -16,6 +16,8 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
+import yaml
+
 from harness.loaders import load_config
 from harness.paths import ArtifactPaths
 from harness.paths import manifest_path as build_manifest_path
@@ -123,7 +125,11 @@ def _resolve_gold_path(gold_path: str | None, run_id: str, runs_dir: str) -> Pat
             "Pass --gold-path explicitly."
         )
 
-    resolved_gold = _resolve_repo_relative_path(config_gold, config_path)
+    resolved_gold = Path(config_gold)
+    if not resolved_gold.exists():
+        raw_config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        raw_gold = raw_config.get("gold_path") if isinstance(raw_config, dict) else None
+        resolved_gold = _resolve_repo_relative_path(raw_gold or config_gold, config_path)
     if not resolved_gold.exists():
         raise FileNotFoundError(
             "Gold annotations could not be resolved automatically: "

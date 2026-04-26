@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 def print_run_summary(manifest, console: Console) -> None:
     """Print a rich Panel summarizing a completed run."""
     gate = manifest.quality_gate_decision if hasattr(manifest, "quality_gate_decision") else None
-    total = manifest.total_evaluated
+    total = getattr(manifest, "total_requirements", manifest.total_evaluated)
     pass_pct = f"{manifest.pass_count / total:.0%}" if total else "n/a"
 
     if gate == "pass":
@@ -51,6 +51,8 @@ def print_run_summary(manifest, console: Console) -> None:
         gate_text = "[bold yellow]NEEDS REVIEW[/bold yellow]"
 
     scorer_type = getattr(manifest, "scorer_type", "heuristic")
+    missing_requirements = getattr(manifest, "missing_requirements", 0)
+    scorer_fallback_count = getattr(manifest, "scorer_fallback_count", 0)
 
     body = (
         f"[bold]Run:[/bold] {manifest.run_id}\n"
@@ -63,9 +65,13 @@ def print_run_summary(manifest, console: Console) -> None:
         f"[yellow]{manifest.borderline_count} borderline[/yellow] / "
         f"[red]{manifest.fail_count} fail[/red]  "
         f"({pass_pct} pass rate)\n"
+        f"[bold]Coverage:[/bold] {manifest.total_evaluated}/{total} evaluated  "
+        f"[bold]Missing:[/bold] {missing_requirements}\n"
         f"[bold]Avg score:[/bold] {manifest.avg_weighted_score:.2f} / 2.00  "
         f"[bold]Parse failures:[/bold] {manifest.parse_failures}"
     )
+    if scorer_fallback_count:
+        body += f"\n[bold]Scorer fallbacks:[/bold] {scorer_fallback_count}"
     if gate is not None:
         body += f"\n[bold]Quality gate:[/bold] {gate_text}"
 

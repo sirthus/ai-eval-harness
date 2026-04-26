@@ -229,6 +229,27 @@ class TestParseOutput:
         with pytest.raises(ValueError, match="schema validation"):
             _parse_output(bad_schema, "REQ-001")
 
+    def test_requirement_id_mismatch_raises_value_error(self):
+        data = json.loads(self._valid_json())
+        data["requirement_id"] = "REQ-999"
+
+        with pytest.raises(ValueError, match="requirement_id mismatch"):
+            _parse_output(json.dumps(data), "REQ-001")
+
+    def test_extra_top_level_field_rejected(self):
+        data = json.loads(self._valid_json())
+        data["debug"] = "not part of the output contract"
+
+        with pytest.raises(ValueError, match="schema validation"):
+            _parse_output(json.dumps(data), "REQ-001")
+
+    def test_extra_test_case_field_rejected(self):
+        data = json.loads(self._valid_json())
+        data["test_cases"][0]["extra"] = "not part of the test case contract"
+
+        with pytest.raises(ValueError, match="schema validation"):
+            _parse_output(json.dumps(data), "REQ-001")
+
     def test_freeform_prose_raises_value_error(self):
         prose = "Here are some test cases: 1. Test login. 2. Test logout."
         with pytest.raises(ValueError, match="not valid JSON"):

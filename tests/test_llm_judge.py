@@ -239,6 +239,8 @@ class TestScore:
         assert result.scores.reviewer_usefulness == 2.0
         assert result.coverage_ratio == 1.0
         assert result.scores.completeness == 2.0  # 100% coverage → 2.0
+        assert result.scorer_source == "llm-judge"
+        assert result.scorer_error == ""
 
     def test_partial_coverage_drives_completeness_score(self, mocker):
         """One of two coverage points covered → coverage_ratio=0.5 → completeness=1.0."""
@@ -274,6 +276,10 @@ class TestScore:
         # Should not raise — returns a valid ScoredResult from heuristic fallback
         result = scorer.score(output, gold)
         assert result.requirement_id == "REQ-001"
+        assert result.scorer_source == "heuristic-fallback"
+        assert result.scorer_error.startswith("APIError:")
+        assert "API timeout" in result.scorer_error
+        assert scorer.fallback_count == 1
 
     def test_malformed_prompt_triggers_fallback_to_heuristic(self, mocker):
         scorer = LLMJudgeScorer()
@@ -284,6 +290,8 @@ class TestScore:
         result = scorer.score(output, gold)
 
         assert result.requirement_id == "REQ-001"
+        assert result.scorer_source == "heuristic-fallback"
+        assert result.scorer_error.startswith("LLMJudgeScorerError:")
 
     def test_anthropic_client_is_created_once_per_scorer(self, mocker):
         verdict = _make_valid_verdict()
@@ -326,6 +334,9 @@ class TestScore:
         gold = _make_gold()
         result = scorer.score(output, gold)
         assert result.requirement_id == "REQ-001"
+        assert result.scorer_source == "heuristic-fallback"
+        assert result.scorer_error.startswith("OSError:")
+        assert scorer.fallback_count == 1
 
     def test_empty_judge_response_triggers_fallback(self, mocker):
         mock_message = MagicMock()
@@ -341,6 +352,8 @@ class TestScore:
         result = scorer.score(output, gold)
 
         assert result.requirement_id == "REQ-001"
+        assert result.scorer_source == "heuristic-fallback"
+        assert result.scorer_error.startswith("LLMJudgeScorerError:")
 
     def test_non_text_judge_response_triggers_fallback(self, mocker):
         mock_message = MagicMock()
@@ -356,6 +369,8 @@ class TestScore:
         result = scorer.score(output, gold)
 
         assert result.requirement_id == "REQ-001"
+        assert result.scorer_source == "heuristic-fallback"
+        assert result.scorer_error.startswith("LLMJudgeScorerError:")
 
     def test_scored_result_fields_map_from_verdict(self, mocker):
         verdict = _make_valid_verdict()
