@@ -1,0 +1,104 @@
+{
+  "requirement_id": "REQ-003",
+  "test_cases": [
+    {
+      "title": "Administrator successfully deletes a project after confirming the dialog",
+      "preconditions": [
+        "User is logged in as an administrator",
+        "At least one project exists in the system with at least one task and at least one member"
+      ],
+      "steps": [
+        "Navigate to the project list or project detail page for the target project",
+        "Initiate the delete action for the target project",
+        "Verify that a confirmation dialog is displayed",
+        "Confirm the deletion in the dialog"
+      ],
+      "expected_result": "The project and all its associated tasks are permanently removed from the system, and all project members receive a deletion notification",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Administrator cancels the deletion at the confirmation dialog and project is preserved",
+      "preconditions": [
+        "User is logged in as an administrator",
+        "At least one project exists in the system"
+      ],
+      "steps": [
+        "Navigate to the project list or project detail page for the target project",
+        "Initiate the delete action for the target project",
+        "Verify that a confirmation dialog is displayed",
+        "Cancel or dismiss the confirmation dialog without confirming"
+      ],
+      "expected_result": "The project and all its associated tasks remain in the system unchanged, and no notifications are sent to project members",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Non-administrator user is unable to delete a project",
+      "preconditions": [
+        "User is logged in with a non-administrator role (e.g., regular member or viewer)",
+        "At least one project exists in the system"
+      ],
+      "steps": [
+        "Navigate to the project list or project detail page for the target project",
+        "Attempt to initiate the delete action for the target project"
+      ],
+      "expected_result": "The delete action is not available or is rejected, and the project remains in the system",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Unauthenticated user cannot delete a project via direct API call",
+      "preconditions": [
+        "No valid authentication session or token is present",
+        "At least one project exists and its identifier is known"
+      ],
+      "steps": [
+        "Send a DELETE request for a known project ID without any authentication credentials"
+      ],
+      "expected_result": "The system returns an authentication error (e.g., HTTP 401) and the project is not deleted",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "All tasks associated with the deleted project are also removed",
+      "preconditions": [
+        "User is logged in as an administrator",
+        "A project exists with multiple tasks assigned to it"
+      ],
+      "steps": [
+        "Record the IDs or details of all tasks belonging to the target project",
+        "Initiate the delete action for the target project",
+        "Confirm the deletion in the confirmation dialog",
+        "Query the system for each previously recorded task ID"
+      ],
+      "expected_result": "None of the previously recorded tasks exist in the system after the project deletion",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "All project members receive a notification upon project deletion",
+      "preconditions": [
+        "User is logged in as an administrator",
+        "A project exists with multiple members",
+        "A mechanism exists to inspect notifications received by users"
+      ],
+      "steps": [
+        "Record all current members of the target project",
+        "Initiate the delete action for the target project",
+        "Confirm the deletion in the confirmation dialog",
+        "Check the notification inbox or notification log for each recorded project member"
+      ],
+      "expected_result": "Every member who belonged to the deleted project has received a notification indicating the project was deleted",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [
+    "Canceling or dismissing the confirmation dialog (e.g., clicking Cancel or pressing Escape) counts as not confirming deletion",
+    "Notifications are delivered in-app, via email, or through some verifiable channel — the specific channel is not specified in the requirement",
+    "The administrator role is distinct from other roles and has elevated privileges in the system",
+    "Deletion is permanent and cannot be undone (no recycle bin or soft-delete mechanism is implied)"
+  ],
+  "notes": "The requirement does not specify: (1) the exact content or format of the confirmation dialog, (2) the content or delivery channel of the member notification, (3) behavior when a project has no tasks or no members, (4) whether the deleting administrator also receives a notification if they are a project member, (5) expected behavior if deletion partially fails (e.g., tasks are deleted but notifications fail). Edge cases around projects with zero tasks and projects with zero members are not covered due to lack of specified behavior. Performance under large numbers of tasks or members is not addressed."
+}

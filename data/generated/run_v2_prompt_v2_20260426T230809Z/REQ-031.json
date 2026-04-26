@@ -1,0 +1,110 @@
+{
+  "requirement_id": "REQ-031",
+  "test_cases": [
+    {
+      "title": "Single quote in filter parameter does not cause 500 error or SQL error leakage",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "At least one task exists in the database",
+        "The caller has valid authentication credentials"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=test' to the endpoint with valid authentication headers",
+        "Record the HTTP response status code",
+        "Inspect the response body for any database error messages, stack traces, or SQL fragments"
+      ],
+      "expected_result": "Response returns HTTP 200 or a defined non-500 error code (e.g., 400), the body contains no SQL error messages or database internals, and no unintended data is returned.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Double quote in filter parameter does not cause 500 error or SQL error leakage",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "At least one task exists in the database",
+        "The caller has valid authentication credentials"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=test\" to the endpoint with valid authentication headers",
+        "Record the HTTP response status code",
+        "Inspect the response body for any database error messages, stack traces, or SQL fragments"
+      ],
+      "expected_result": "Response returns HTTP 200 or a defined non-500 error code, the body contains no SQL error messages or database internals, and no unintended data is returned.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Classic SQL injection via semicolon and statement terminator does not execute injected SQL",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "The database contains a known set of tasks owned by different users",
+        "The caller has valid authentication credentials"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=1;DROP%20TABLE%20tasks-- to the endpoint with valid authentication headers",
+        "Record the HTTP response status code and body",
+        "After the request, verify (via a separate legitimate GET /tasks call) that the tasks table still exists and data is intact",
+        "Inspect the response body for any SQL error messages or database internals"
+      ],
+      "expected_result": "Response returns HTTP 200 or a defined non-500 error code, the tasks table remains unmodified after the request, and the response body contains no SQL error messages.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "SQL line-comment sequence (--) in filter parameter does not bypass filter logic or leak data",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "The database contains tasks belonging to multiple users",
+        "The caller has valid authentication credentials with access to only their own tasks"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=anything'%20OR%20'1'='1'-- to the endpoint with valid authentication headers",
+        "Record the HTTP response status code",
+        "Inspect the response body to determine if tasks belonging to other users are returned",
+        "Inspect the response body for SQL error messages or database internals"
+      ],
+      "expected_result": "Response returns HTTP 200 or a defined non-500 error code, only tasks the authenticated user is authorized to see are returned, and no SQL error messages are present in the response body.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "SQL block-comment sequence (/**/) in filter parameter does not cause 500 error or data leakage",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "At least one task exists in the database",
+        "The caller has valid authentication credentials"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=test/**/OR/**/1=1 to the endpoint with valid authentication headers",
+        "Record the HTTP response status code",
+        "Inspect the response body for any SQL error messages, stack traces, or tasks not belonging to the authenticated user"
+      ],
+      "expected_result": "Response returns HTTP 200 or a defined non-500 error code, only authorized task data is returned, and the body contains no SQL error messages or database internals.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Valid filter parameter with no SQL metacharacters returns expected results",
+      "preconditions": [
+        "The GET /tasks endpoint is running and accessible",
+        "Tasks with status 'open' exist in the database for the authenticated user",
+        "The caller has valid authentication credentials"
+      ],
+      "steps": [
+        "Send GET /tasks?filter=open to the endpoint with valid authentication headers",
+        "Record the HTTP response status code",
+        "Inspect the response body to confirm only tasks matching the filter are returned"
+      ],
+      "expected_result": "Response returns HTTP 200 and the body contains only tasks matching the filter value 'open' that belong to the authenticated user, with no errors.",
+      "priority": "medium",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [
+    "The endpoint requires authentication; tests are performed with a valid authenticated session unless testing unauthorized access.",
+    "A non-500 HTTP status code (such as 200 with an empty result set or 400 for an invalid filter) is considered a safe and acceptable response to metacharacter input, as the requirement only prohibits 500 errors.",
+    "The requirement implies per-user data isolation, so tasks belonging to other users being returned counts as a security failure.",
+    "URL encoding of metacharacters is handled transparently by the server; both raw and percent-encoded variants are treated equivalently."
+  ],
+  "notes": "The requirement does not specify what the correct HTTP status code or response body should be when a filter value contains SQL metacharacters but is otherwise a malformed or nonsensical filter — it only prohibits 500 errors, SQL error leakage, and SQL execution. It is ambiguous whether the endpoint should return 400 (bad request), 200 with empty results, or 200 with sanitized/escaped results. Test cases use 'HTTP 200 or a defined non-500 error code' to remain requirement-faithful. Additionally, the requirement does not address other injection vectors (e.g., UNION-based injection, blind SQL injection via timing), which represent a coverage gap. No test case is included for unauthorized actors because the requirement is scoped to input handling behavior rather than access control, though access control tests are strongly recommended as a complement."
+}

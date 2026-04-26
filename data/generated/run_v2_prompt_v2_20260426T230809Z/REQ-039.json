@@ -1,0 +1,103 @@
+{
+  "requirement_id": "REQ-039",
+  "test_cases": [
+    {
+      "title": "Onboarding wizard is presented to a new user on first login",
+      "preconditions": [
+        "A new user account has been created but has never logged in",
+        "The user is not currently authenticated"
+      ],
+      "steps": [
+        "Log in to the application with the new user's credentials for the first time",
+        "Observe the screen rendered immediately after successful authentication"
+      ],
+      "expected_result": "The multi-step onboarding wizard is displayed, starting at Step 1 (creating a first project), before any other application content",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Returning user who has already completed onboarding is NOT shown the wizard",
+      "preconditions": [
+        "An existing user account has previously completed the full onboarding wizard",
+        "The user is not currently authenticated"
+      ],
+      "steps": [
+        "Log in to the application with the existing user's credentials",
+        "Observe the screen rendered immediately after successful authentication"
+      ],
+      "expected_result": "The onboarding wizard is not displayed; the user is taken directly to the normal post-login landing page",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Wizard progress is saved after each completed step and resumes correctly within 30 days",
+      "preconditions": [
+        "A new user account has been created and has never logged in",
+        "The system clock is set to a known date (Day 0)"
+      ],
+      "steps": [
+        "Log in as the new user for the first time; confirm the wizard starts at Step 1 (create a first project)",
+        "Complete Step 1 (create a first project) and confirm the wizard advances to Step 2",
+        "Without completing Step 2, close the browser session to simulate leaving the wizard",
+        "Advance the system or test clock to Day 15 (within the 30-day window)",
+        "Log in again as the same user",
+        "Observe the screen rendered after authentication"
+      ],
+      "expected_result": "The onboarding wizard is displayed and resumes at Step 2 (invite a team member), not Step 1, confirming that progress was saved after Step 1 was completed",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Wizard is NOT resumed when the user returns after more than 30 days",
+      "preconditions": [
+        "A new user account exists that previously completed Step 1 of the wizard but not Steps 2 or 3",
+        "Step 1 was completed exactly 31 days ago"
+      ],
+      "steps": [
+        "Log in as the user whose last wizard interaction was 31 days ago",
+        "Observe the screen rendered after authentication"
+      ],
+      "expected_result": "The onboarding wizard is not resumed from the saved step; the system either restarts the wizard from Step 1, dismisses it entirely, or navigates to the normal landing page (behavior after expiry is noted as ambiguous — see notes)",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Completing all three wizard steps displays the confirmation screen",
+      "preconditions": [
+        "A new user account has been created and has never logged in",
+        "The user is authenticated and the wizard is displayed starting at Step 1"
+      ],
+      "steps": [
+        "Complete Step 1: provide required details to create a first project and submit",
+        "Complete Step 2: provide a valid email address to invite a team member and submit",
+        "Complete Step 3: provide required details to create a first task and submit",
+        "Observe the screen rendered after Step 3 is submitted"
+      ],
+      "expected_result": "A confirmation screen is displayed acknowledging that all onboarding steps have been completed",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Wizard step cannot be skipped; user cannot advance without completing the current step",
+      "preconditions": [
+        "A new user is logged in and the onboarding wizard is active on Step 1 (create a first project)"
+      ],
+      "steps": [
+        "Without providing any required input for Step 1, attempt to navigate directly to Step 2 (e.g., via a 'Next' button, URL manipulation, or direct navigation link)",
+        "Observe whether the application advances to Step 2"
+      ],
+      "expected_result": "The application does not advance to Step 2; the user remains on Step 1 with appropriate feedback indicating that the current step must be completed first",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "A 'new user' is defined as a user account that has never previously logged into the application",
+    "The 30-day window is measured from the date the user last interacted with or partially completed the wizard, not from account creation date",
+    "The wizard steps must be completed in sequential order (Step 1 → Step 2 → Step 3)",
+    "Each step has a distinct completion action (e.g., a submit/confirm button) that triggers the progress-save event",
+    "Progress is tied to the user account, not the browser session or device",
+    "The confirmation screen is a distinct screen separate from the normal application landing page"
+  ],
+  "notes": "The requirement does not specify what happens when a user returns after the 30-day window expires with incomplete wizard progress — it is ambiguous whether the wizard restarts from Step 1, is permanently dismissed, or some other behavior occurs; this must be clarified. The requirement does not define whether steps can be revisited or edited after completion. There is no specification of what constitutes a valid completion of each step (e.g., minimum required fields), which limits the ability to write precise input-validation test cases. The requirement does not address error handling within individual steps (e.g., failed project creation due to duplicate name). No performance or concurrency requirements are stated for wizard progress persistence."
+}

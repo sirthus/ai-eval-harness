@@ -1,0 +1,105 @@
+{
+  "requirement_id": "REQ-037",
+  "test_cases": [
+    {
+      "title": "Export file with Chinese character project name returns RFC 5987 encoded Content-Disposition header",
+      "preconditions": [
+        "A project named '测试项目' (Chinese characters) exists in the system",
+        "The user is authenticated and has export permissions on that project"
+      ],
+      "steps": [
+        "Send an authenticated HTTP GET/POST request to the export endpoint for the project named '测试项目'",
+        "Capture the raw HTTP response headers",
+        "Inspect the Content-Disposition header value"
+      ],
+      "expected_result": "The Content-Disposition header contains a filename* parameter encoded per RFC 5987, e.g. filename*=UTF-8''%E6%B5%8B%E8%AF%95%E9%A1%B9%E7%9B%AE, and the header is syntactically valid per RFC 5987.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Export file with Arabic script project name returns RFC 5987 encoded Content-Disposition header",
+      "preconditions": [
+        "A project named 'مشروع' (Arabic script) exists in the system",
+        "The user is authenticated and has export permissions on that project"
+      ],
+      "steps": [
+        "Send an authenticated HTTP GET/POST request to the export endpoint for the project named 'مشروع'",
+        "Capture the raw HTTP response headers",
+        "Inspect the Content-Disposition header value"
+      ],
+      "expected_result": "The Content-Disposition header contains a filename* parameter encoded per RFC 5987, e.g. filename*=UTF-8''%D9%85%D8%B4%D8%B1%D9%88%D8%B9, and the header is syntactically valid per RFC 5987.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Export file with emoji project name returns RFC 5987 encoded Content-Disposition header",
+      "preconditions": [
+        "A project named '🚀 Launch' (containing emoji) exists in the system",
+        "The user is authenticated and has export permissions on that project"
+      ],
+      "steps": [
+        "Send an authenticated HTTP GET/POST request to the export endpoint for the project named '🚀 Launch'",
+        "Capture the raw HTTP response headers",
+        "Inspect the Content-Disposition header value"
+      ],
+      "expected_result": "The Content-Disposition header contains a filename* parameter encoded per RFC 5987, e.g. filename*=UTF-8''%F0%9F%9A%80%20Launch, and the header is syntactically valid per RFC 5987.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Exported file with non-ASCII project name can be saved and opened without modification on a modern OS",
+      "preconditions": [
+        "A project named '测试项目' exists in the system",
+        "The user is authenticated and has export permissions",
+        "A modern browser (Chrome, Firefox, or Edge, latest stable version) is available on a modern OS (Windows 10+, macOS 12+, Ubuntu 22+)"
+      ],
+      "steps": [
+        "Navigate to the export function for the project named '测试项目' in the browser",
+        "Trigger the export/download action",
+        "Observe the filename suggested by the browser in the save dialog or the downloaded file's name in the downloads folder",
+        "Attempt to open the downloaded file directly from the filesystem"
+      ],
+      "expected_result": "The browser presents and saves the file with the correctly decoded filename '测试项目' (plus any applicable extension) without any percent-encoded or garbled characters, and the file opens successfully without modification.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Unauthenticated user attempting to export from a non-ASCII named project is denied access",
+      "preconditions": [
+        "A project named '测试项目' exists in the system",
+        "No valid authentication credentials are present in the request"
+      ],
+      "steps": [
+        "Send an unauthenticated HTTP request to the export endpoint for the project named '测试项目'",
+        "Capture the HTTP response status code and body"
+      ],
+      "expected_result": "The server returns a 401 Unauthorized (or 403 Forbidden) response and does not return a file or a Content-Disposition header with any encoded filename.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Export file with mixed ASCII and non-ASCII project name produces correct RFC 5987 encoding",
+      "preconditions": [
+        "A project named 'Report_2024_测试' (mixed ASCII and Chinese characters) exists in the system",
+        "The user is authenticated and has export permissions on that project"
+      ],
+      "steps": [
+        "Send an authenticated HTTP GET/POST request to the export endpoint for the project named 'Report_2024_测试'",
+        "Capture the raw HTTP response headers",
+        "Inspect the Content-Disposition header value",
+        "Verify that ASCII characters are represented correctly and non-ASCII characters are percent-encoded using UTF-8"
+      ],
+      "expected_result": "The Content-Disposition header contains a filename* parameter where the full project name is correctly UTF-8 percent-encoded per RFC 5987 (e.g. filename*=UTF-8''Report_2024_%E6%B5%8B%E8%AF%95), with no characters omitted or incorrectly encoded.",
+      "priority": "medium",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The export endpoint returns a downloadable file attachment; the exact HTTP method (GET or POST) and URL path are not specified by the requirement.",
+    "The system uses UTF-8 as the character encoding for RFC 5987 encoding, as it is the only encoding mandated by RFC 5987.",
+    "Authentication and authorization are enforced on the export endpoint even though the requirement only specifies encoding behavior.",
+    "The exported file has a file extension (e.g., .csv, .zip) that is appended to the project name to form the full filename; test cases treat the extension as implementation detail.",
+    "Modern browsers refers to the latest stable versions of Chrome, Firefox, Edge, and Safari."
+  ],
+  "notes": "The requirement does not specify whether both filename (ASCII fallback) and filename* (RFC 5987) parameters must be present simultaneously in the Content-Disposition header for backward compatibility (as recommended by RFC 6266). This is a coverage gap. The requirement also does not define behavior when the project name contains characters that are valid in RFC 5987 encoding but illegal in certain OS filesystems (e.g., '/' or null bytes embedded via non-ASCII sequences). No performance or rate-limiting requirements are stated for the export endpoint, so no performance test cases were generated. The specific file format(s) produced by the export are not stated, which may affect the filename extension handling."
+}

@@ -50,11 +50,14 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
 
     model_adapter.validate_api_key()
 
+    total = len(requirements)
+    completed = 0
     parse_failures: list[str] = []
     for req in requirements:
         out_path = paths.output_file(req.requirement_id)
         failure_marker = paths.failure_marker(req.requirement_id)
         if out_path.exists():
+            completed += 1
             logger.info("Skipping %s (already generated)", req.requirement_id)
             continue
         if failure_marker.exists():
@@ -72,6 +75,8 @@ def run(config_path: str, run_id: str | None = None) -> tuple[Path, list[str]]:
                 prompt_version=prompt_version,
             )
             out_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+            completed += 1
+            print(f"  Generating {completed}/{total}: {req.requirement_id}")
             logger.info("Generated %s -> %s", req.requirement_id, out_path)
         except ValueError as exc:
             logger.error("Parse/schema failure for %s: %s", req.requirement_id, exc)

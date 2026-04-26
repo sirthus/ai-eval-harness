@@ -1,0 +1,87 @@
+{
+  "requirement_id": "REQ-032",
+  "test_cases": [
+    {
+      "title": "Authenticated request to protected endpoint succeeds with valid Bearer token",
+      "preconditions": [
+        "A valid, non-expired Bearer token has been obtained",
+        "At least one protected API endpoint (neither /health nor /auth/token) is available"
+      ],
+      "steps": [
+        "Send a request to a protected endpoint (e.g., GET /users) with the header 'Authorization: Bearer <valid_token>'"
+      ],
+      "expected_result": "The server returns a response with an HTTP status code other than 401 (e.g., 200 OK or 403 if the user lacks resource-level permission), indicating authentication was accepted.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Request to protected endpoint without Authorization header returns HTTP 401",
+      "preconditions": [
+        "At least one protected API endpoint (neither /health nor /auth/token) is available"
+      ],
+      "steps": [
+        "Send a request to a protected endpoint (e.g., GET /users) with no Authorization header"
+      ],
+      "expected_result": "The server returns HTTP 401 Unauthorized.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Request to protected endpoint with expired Bearer token returns HTTP 401",
+      "preconditions": [
+        "An expired (but previously valid) Bearer token is available",
+        "At least one protected API endpoint (neither /health nor /auth/token) is available"
+      ],
+      "steps": [
+        "Send a request to a protected endpoint (e.g., GET /users) with the header 'Authorization: Bearer <expired_token>'"
+      ],
+      "expected_result": "The server returns HTTP 401 Unauthorized.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Request to protected endpoint with an invalid (malformed) Bearer token returns HTTP 401",
+      "preconditions": [
+        "At least one protected API endpoint (neither /health nor /auth/token) is available"
+      ],
+      "steps": [
+        "Send a request to a protected endpoint (e.g., GET /users) with the header 'Authorization: Bearer invalid.token.value'"
+      ],
+      "expected_result": "The server returns HTTP 401 Unauthorized.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "/health endpoint is accessible without any authentication",
+      "preconditions": [
+        "The /health endpoint is deployed and running"
+      ],
+      "steps": [
+        "Send a GET request to /health with no Authorization header"
+      ],
+      "expected_result": "The server returns a successful response (e.g., HTTP 200 OK) without requiring any token.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "/auth/token endpoint is accessible without any authentication",
+      "preconditions": [
+        "The /auth/token endpoint is deployed and running"
+      ],
+      "steps": [
+        "Send a POST request to /auth/token with no Authorization header and a valid request body for token issuance"
+      ],
+      "expected_result": "The server does not return HTTP 401 Unauthorized; it processes the request and returns an appropriate response (e.g., 200 with a token or 400 for bad credentials).",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [
+    "A 'valid' Bearer token is one that is correctly signed, not expired, and recognized by the authorization server.",
+    "Resource-level authorization (e.g., HTTP 403 Forbidden) is out of scope for this requirement; only authentication (401) is being tested.",
+    "The /auth/token endpoint accepts POST requests for token issuance; the exact request body format is not specified by this requirement.",
+    "An Authorization header supplied with a non-Bearer scheme (e.g., 'Basic ...') is treated as missing/invalid and should also result in HTTP 401, though the requirement does not explicitly state this.",
+    "All HTTP methods (GET, POST, PUT, DELETE, etc.) on protected endpoints are subject to the same authentication requirement."
+  ],
+  "notes": "1. The requirement does not specify the exact error response body format for 401 responses (e.g., JSON error message, WWW-Authenticate header), leaving response body assertions undefined. 2. It is unclear whether a request with 'Authorization: Bearer ' (empty token string) should return 401 — this edge case is not explicitly covered. 3. The requirement does not address whether a token that is valid but issued by a different/untrusted authority should return 401 or another code. 4. There is no specification on whether multiple protected endpoints must each be individually verified or if one representative endpoint is sufficient. 5. Rate limiting and brute-force protection on /auth/token are not addressed by this requirement."
+}

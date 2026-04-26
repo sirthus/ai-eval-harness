@@ -1,0 +1,108 @@
+{
+  "requirement_id": "REQ-023",
+  "test_cases": [
+    {
+      "title": "Enable digest mode and receive batched email at configured time",
+      "preconditions": [
+        "User is authenticated and has a valid account with an associated email address",
+        "User has digest mode currently disabled",
+        "At least two individual event notifications have occurred since the last digest delivery"
+      ],
+      "steps": [
+        "Navigate to notification settings",
+        "Enable daily notification digest mode",
+        "Set the digest delivery time to a specific time (e.g., 08:00 AM)",
+        "Trigger two or more distinct events that would normally generate individual notifications",
+        "Wait until the configured digest delivery time passes"
+      ],
+      "expected_result": "The user receives exactly one email at the configured time containing all events that occurred since the previous digest delivery, and no individual event notification emails are sent.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "No digest email sent when no events occurred since last digest",
+      "preconditions": [
+        "User is authenticated and has digest mode enabled with a configured delivery time",
+        "No events have occurred since the last digest delivery"
+      ],
+      "steps": [
+        "Ensure no events are triggered between the last digest delivery and the next scheduled delivery time",
+        "Wait until the configured digest delivery time passes",
+        "Check the user's email inbox"
+      ],
+      "expected_result": "No digest email is sent to the user for that day.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User can configure the daily digest delivery time",
+      "preconditions": [
+        "User is authenticated",
+        "Digest mode is enabled"
+      ],
+      "steps": [
+        "Navigate to notification settings",
+        "Change the digest delivery time from the current value to a new specific time (e.g., 06:00 PM)",
+        "Save the updated setting",
+        "Trigger at least one event",
+        "Wait until the newly configured delivery time passes"
+      ],
+      "expected_result": "The digest email is delivered at the newly configured time, not the previous time.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Digest includes only events since the previous digest delivery",
+      "preconditions": [
+        "User is authenticated and has digest mode enabled",
+        "A prior digest was delivered at time T",
+        "Events E1 and E2 occurred before time T (included in the previous digest)",
+        "Events E3 and E4 occurred after time T"
+      ],
+      "steps": [
+        "Allow events E3 and E4 to occur after the last digest delivery",
+        "Wait until the next configured digest delivery time passes",
+        "Open the received digest email"
+      ],
+      "expected_result": "The digest email contains only events E3 and E4, and does not include events E1 or E2.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Individual event notifications are suppressed while digest mode is enabled",
+      "preconditions": [
+        "User is authenticated and has digest mode enabled",
+        "Digest delivery time is set to a future time (e.g., several hours away)"
+      ],
+      "steps": [
+        "Trigger an event that would normally generate an individual notification email",
+        "Immediately check the user's email inbox"
+      ],
+      "expected_result": "No individual event notification email is delivered to the user immediately after the event; the event is held for the next digest.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Unauthenticated user cannot enable or modify digest mode settings",
+      "preconditions": [
+        "No user is currently authenticated (user is logged out)"
+      ],
+      "steps": [
+        "Attempt to access the notification settings page or call the API endpoint to enable digest mode without a valid authentication token",
+        "Attempt to set a digest delivery time"
+      ],
+      "expected_result": "The system rejects the request with an authentication error and does not modify any digest mode settings.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "Digest mode is a per-user toggle setting stored in the user's notification preferences.",
+    "The delivery time is configured in the user's local timezone; the system handles timezone-aware scheduling.",
+    "Enabling digest mode suppresses all individual event notification emails for that user.",
+    "The system defines 'previous digest delivery' as the timestamp of the last successfully sent digest; if no digest has ever been sent, it is assumed to be the time digest mode was first enabled.",
+    "Email is the only delivery channel for the digest as stated; other channels (push, SMS) are out of scope for this requirement.",
+    "Events are queued reliably and not lost if no digest is sent on a given day."
+  ],
+  "notes": "The requirement does not specify: (1) how 'events' are defined or what types of events qualify for digest inclusion; (2) the format or structure of the digest email content; (3) behavior when the user changes the delivery time after events have already been queued for the current day; (4) what happens if the digest delivery fails (retry behavior); (5) whether digest mode applies globally or can be scoped to specific event types; (6) the granularity of the delivery time configuration (e.g., hour-only vs. minute-level). These gaps may require additional test cases once clarified."
+}

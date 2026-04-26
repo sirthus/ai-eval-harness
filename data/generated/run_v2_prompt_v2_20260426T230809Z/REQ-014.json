@@ -1,0 +1,108 @@
+{
+  "requirement_id": "REQ-014",
+  "test_cases": [
+    {
+      "title": "Viewer can successfully view project details",
+      "preconditions": [
+        "A project exists with at least one task, one comment, and populated project details",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user",
+        "Send a GET request (or navigate) to the project details endpoint for the project",
+        "Inspect the response status and body"
+      ],
+      "expected_result": "The response returns HTTP 200 with the full project details visible to the viewer",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Viewer can successfully view tasks and comments",
+      "preconditions": [
+        "A project exists with at least one task containing at least one comment",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user",
+        "Send a GET request to the tasks list endpoint for the project",
+        "Verify task list is returned",
+        "Send a GET request to the comments endpoint for one of the tasks",
+        "Inspect the response status and body"
+      ],
+      "expected_result": "Both requests return HTTP 200 with the full list of tasks and comments respectively",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Viewer is denied when attempting to create a task",
+      "preconditions": [
+        "A project exists",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user",
+        "Send a POST request to the task creation endpoint for the project with a valid task payload",
+        "Inspect the response status and error message"
+      ],
+      "expected_result": "The response returns an access-denied error (e.g., HTTP 403) and the task is not created in the project",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Viewer is denied when attempting to edit or delete a task",
+      "preconditions": [
+        "A project exists with at least one existing task",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user",
+        "Send a PUT or PATCH request to the task update endpoint with a valid edit payload targeting the existing task",
+        "Inspect the response status and error message",
+        "Send a DELETE request to the task deletion endpoint targeting the same existing task",
+        "Inspect the response status and error message"
+      ],
+      "expected_result": "Both the edit and delete requests return an access-denied error (e.g., HTTP 403) and the task remains unchanged and present in the project",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Viewer is denied when attempting to add a comment",
+      "preconditions": [
+        "A project exists with at least one existing task",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user",
+        "Send a POST request to the comment creation endpoint for an existing task with a valid comment payload",
+        "Inspect the response status and error message"
+      ],
+      "expected_result": "The response returns an access-denied error (e.g., HTTP 403) and no new comment is persisted on the task",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Unauthenticated or unauthorized actor cannot bypass viewer write restrictions by manipulating the role claim",
+      "preconditions": [
+        "A project exists with at least one existing task",
+        "A user account exists with the 'viewer' role assigned to the project"
+      ],
+      "steps": [
+        "Authenticate as the viewer-role user and obtain a valid session token or JWT",
+        "Manually modify the role claim in the token to a higher-privilege role (e.g., 'editor' or 'admin') without a valid signature",
+        "Send a POST request to the task creation endpoint using the tampered token with a valid task payload",
+        "Inspect the response status and error message"
+      ],
+      "expected_result": "The server rejects the tampered token and returns an access-denied or authentication error (e.g., HTTP 401 or 403); no task is created",
+      "priority": "high",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The system enforces role-based access control server-side, not solely on the client side",
+    "An 'access-denied error' maps to HTTP 403 Forbidden; HTTP 401 Unauthorized is assumed to be distinct (unauthenticated) unless the system conflates them",
+    "Read operations (view) are implemented as HTTP GET requests and write operations use POST, PUT, PATCH, or DELETE",
+    "The viewer role is scoped per-project; a user may have different roles in different projects",
+    "Comments are associated with tasks within a project, not standalone project-level entities"
+  ],
+  "notes": "The requirement does not specify the error response format (e.g., JSON error body structure, error code, or human-readable message) beyond 'access-denied error' — test cases validate HTTP status only and the absence of side effects. It is ambiguous whether 'view comments' means comments on tasks only or also project-level comments; this is assumed to be task-level. No mention is made of editing or deleting comments — it is unclear whether a viewer is also restricted from these write actions on comments; this is a coverage gap. The requirement does not address what happens when a viewer accesses a project they are not a member of at all (no role) — this is not covered by these test cases."
+}

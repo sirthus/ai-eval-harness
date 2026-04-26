@@ -1,0 +1,113 @@
+{
+  "requirement_id": "REQ-034",
+  "test_cases": [
+    {
+      "title": "Successful CSV export of a project with multiple tasks",
+      "preconditions": [
+        "User is authenticated and has access to a project",
+        "The project contains at least 3 tasks with varying statuses, assignees, and due dates",
+        "Each task has a task ID, title, status, assignee, due date, and created date populated"
+      ],
+      "steps": [
+        "Navigate to the project view for a project with multiple tasks",
+        "Locate and click the export button",
+        "Wait for the file download to initiate",
+        "Open the downloaded file"
+      ],
+      "expected_result": "A CSV file is downloaded containing a header row with columns 'task ID', 'title', 'status', 'assignee', 'due date', and 'created date', followed by exactly one data row per task, with each row containing the correct values for that task.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "CSV export from a project with zero tasks",
+      "preconditions": [
+        "User is authenticated and has access to a project",
+        "The project contains no tasks"
+      ],
+      "steps": [
+        "Navigate to the project view for a project with no tasks",
+        "Locate and click the export button",
+        "Wait for the file download to initiate",
+        "Open the downloaded file"
+      ],
+      "expected_result": "A CSV file is downloaded containing only the header row with columns 'task ID', 'title', 'status', 'assignee', 'due date', and 'created date', and no data rows.",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "CSV export completes within 30 seconds for exactly 10,000 tasks",
+      "preconditions": [
+        "User is authenticated and has access to a project",
+        "The project contains exactly 10,000 tasks, each with all required fields populated",
+        "A timer or performance monitoring tool is available"
+      ],
+      "steps": [
+        "Navigate to the project view for the project containing 10,000 tasks",
+        "Start a timer",
+        "Click the export button",
+        "Record the time elapsed when the file download completes"
+      ],
+      "expected_result": "The CSV file download completes within 30 seconds and contains a header row plus exactly 10,000 data rows.",
+      "priority": "high",
+      "type": "performance"
+    },
+    {
+      "title": "CSV export column completeness and correct ordering",
+      "preconditions": [
+        "User is authenticated and has access to a project",
+        "The project contains at least 1 task with all fields (task ID, title, status, assignee, due date, created date) populated with known values"
+      ],
+      "steps": [
+        "Navigate to the project view",
+        "Click the export button",
+        "Open the downloaded CSV file",
+        "Inspect the header row for the presence and order of all required columns",
+        "Compare the data row values against the known task field values in the application"
+      ],
+      "expected_result": "The header row contains exactly the six required columns (task ID, title, status, assignee, due date, created date), and the data row values match the corresponding task field values displayed in the application.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Unauthorized user cannot access the export button or download the CSV",
+      "preconditions": [
+        "A project with at least one task exists",
+        "A user account exists that does not have access to the project"
+      ],
+      "steps": [
+        "Authenticate as the unauthorized user",
+        "Attempt to navigate to the project view of the restricted project",
+        "If the project view is accessible, attempt to locate and click the export button"
+      ],
+      "expected_result": "The unauthorized user is denied access to the project view or the export functionality, and no CSV file is downloaded.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "CSV export handles tasks with optional or missing field values",
+      "preconditions": [
+        "User is authenticated and has access to a project",
+        "The project contains at least one task where the assignee field and/or due date field is not set"
+      ],
+      "steps": [
+        "Navigate to the project view",
+        "Click the export button",
+        "Open the downloaded CSV file",
+        "Locate the data row corresponding to the task with missing fields",
+        "Inspect the values in the assignee and due date columns for that row"
+      ],
+      "expected_result": "The CSV file is downloaded successfully; the row for the task with missing fields contains empty values in the corresponding columns rather than causing an error or omitting the row.",
+      "priority": "medium",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The export button is visible and accessible within the project view UI to any user with project access.",
+    "Authentication and project-level access control exist in the system, even though the requirement does not explicitly define permission levels.",
+    "The assignee and due date fields may be optional for a task; other fields (task ID, title, status, created date) are assumed to always be present.",
+    "The CSV file is downloaded directly to the client device via the browser's file download mechanism.",
+    "The 30-second performance limit applies to end-to-end time from clicking the export button to the file being fully downloaded.",
+    "There is no defined behavior for projects with more than 10,000 tasks; this scenario is not tested."
+  ],
+  "notes": "The requirement does not specify: (1) the exact column header label format or casing (e.g., 'task ID' vs 'Task ID' vs 'task_id'), (2) the date format used for due date and created date columns, (3) the CSV delimiter or encoding standard, (4) behavior when the export exceeds 10,000 tasks (hard cap, truncation, or error message), (5) whether the export button is always visible or conditionally shown, (6) error handling if the export fails mid-process. These ambiguities may require additional test cases once clarified."
+}

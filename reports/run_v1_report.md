@@ -4,14 +4,19 @@
 
 | Field | Value |
 |---|---|
-| Run ID | `run_v1` |
-| Model | `claude-sonnet-4-6` |
-| Prompt version | `v1` |
-| Dataset version | `mvp_v1` |
-| Scoring version | `v1` |
+| Run ID | run_v1 |
+| Model | claude-sonnet-4-6 |
+| Prompt version | v1 |
+| Dataset version | mvp_v1 |
+| Scoring version | v1 |
+| Scorer | heuristic |
 | Timestamp | 2026-04-21T12:00:00+00:00 |
-| Git commit | `2c0c256` |
-| Config | `configs/run_v1.yaml` |
+| Git commit | 2c0c256 |
+| Config | configs/run_v1.yaml |
+| Total requirements | 10 |
+| Evaluated requirements | 10 |
+| Parse failures | 0 |
+| Missing requirements | 0 |
 
 ### Aggregate Scores (Auto)
 
@@ -27,7 +32,7 @@
 ## Quality Gate Recommendation
 
 Auto gate: ✓ Recommended
-Basis: persisted manifest gate. Pass 8 (80%), borderline 2 (20%), fail 0 (0%), parse failures 0.
+Basis: persisted manifest gate. Pass 8 (80%), borderline 2 (20%), fail 0 (0%), parse failures 0, missing requirements 0.
 
 ## Per-Sample Results
 

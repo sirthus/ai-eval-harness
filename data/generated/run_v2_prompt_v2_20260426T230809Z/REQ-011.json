@@ -1,0 +1,104 @@
+{
+  "requirement_id": "REQ-011",
+  "test_cases": [
+    {
+      "title": "Successful login with valid credentials and valid TOTP code",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User has 2FA enabled and a TOTP authenticator app is configured and synchronized"
+      ],
+      "steps": [
+        "Send a POST request to the login endpoint with the user's valid email and password",
+        "Verify that the response indicates a TOTP prompt (e.g., HTTP 200 with a challenge token or step indicator, not a fully authenticated session)",
+        "Retrieve a current TOTP code from the configured authenticator app",
+        "Submit the TOTP code to the TOTP verification endpoint",
+        "Inspect the response for an authenticated session token or equivalent access grant"
+      ],
+      "expected_result": "The system returns a successful authentication response (e.g., session token or redirect to authenticated area), confirming access is granted.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "TOTP prompt is displayed after valid credentials for 2FA-enabled account",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User has 2FA enabled on the account"
+      ],
+      "steps": [
+        "Send a POST request to the login endpoint with the user's valid email and password",
+        "Inspect the response body and status code"
+      ],
+      "expected_result": "The system responds with a TOTP challenge prompt and does not grant full access or return a fully authenticated session token.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Access denied when an invalid TOTP code is submitted",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User has 2FA enabled and a TOTP authenticator app is configured",
+        "User has successfully submitted valid credentials and received a TOTP prompt"
+      ],
+      "steps": [
+        "Submit a syntactically valid but incorrect TOTP code (e.g., '000000') to the TOTP verification endpoint",
+        "Inspect the response body and status code"
+      ],
+      "expected_result": "The system returns an error response indicating the TOTP code is invalid and does not grant access or return a session token.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Access denied when an expired TOTP code is submitted",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User has 2FA enabled and a TOTP authenticator app is configured",
+        "User has successfully submitted valid credentials and received a TOTP prompt",
+        "A TOTP code from a previous time window (older than the allowed TOTP validity period) is available"
+      ],
+      "steps": [
+        "Submit the expired TOTP code to the TOTP verification endpoint",
+        "Inspect the response body and status code"
+      ],
+      "expected_result": "The system returns an error response indicating the TOTP code is expired or invalid and does not grant access or return a session token.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "No TOTP prompt for user without 2FA enabled",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User does NOT have 2FA enabled on the account"
+      ],
+      "steps": [
+        "Send a POST request to the login endpoint with the user's valid email and password",
+        "Inspect the response body and status code"
+      ],
+      "expected_result": "The system grants access directly (returns a session token or equivalent) without issuing a TOTP prompt.",
+      "priority": "medium",
+      "type": "positive"
+    },
+    {
+      "title": "TOTP code reuse within the same time window is rejected",
+      "preconditions": [
+        "User account exists with a verified email and password",
+        "User has 2FA enabled and a TOTP authenticator app is configured",
+        "User has previously completed a successful TOTP verification with a specific code in the current time window"
+      ],
+      "steps": [
+        "Submit the same TOTP code that was already successfully used in the current time window to the TOTP verification endpoint",
+        "Inspect the response body and status code"
+      ],
+      "expected_result": "The system returns an error response and denies access, preventing replay of an already-used TOTP code.",
+      "priority": "high",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The TOTP implementation follows RFC 6238 (TOTP: Time-Based One-Time Password Algorithm) with a standard 30-second time window.",
+    "After entering valid credentials, the system issues an intermediate challenge state (not a full session) before TOTP verification is complete.",
+    "The system has a defined TOTP validity window; 'expired' means outside that window.",
+    "The API exposes distinct endpoints or a multi-step flow for credential submission and TOTP submission.",
+    "TOTP codes are 6-digit numeric strings as is standard for TOTP."
+  ],
+  "notes": "The requirement does not specify: (1) the number of allowed TOTP retry attempts before lockout — rate-limiting and account lockout behavior should be clarified and tested; (2) whether the TOTP prompt has a session timeout (i.e., how long the challenge state remains valid); (3) the exact error messages to display for invalid vs. expired codes — it is unclear if these are distinct error messages or a single generic one; (4) whether TOTP code reuse (replay attack) within the same time window should be rejected — this was added as a security assumption but is not stated in the requirement; (5) recovery flows (e.g., lost authenticator) are out of scope for this requirement."
+}

@@ -1,0 +1,102 @@
+{
+  "requirement_id": "REQ-040",
+  "test_cases": [
+    {
+      "title": "Skip an individual step marks it as skipped without completing it",
+      "preconditions": [
+        "User is authenticated and onboarding wizard is active",
+        "User is on a step that has not yet been completed",
+        "The onboarding wizard has at least two steps"
+      ],
+      "steps": [
+        "Navigate to an incomplete step in the onboarding wizard",
+        "Click or activate the 'Skip' option for that individual step",
+        "Observe the step's status in the wizard progress or state"
+      ],
+      "expected_result": "The step is marked as 'skipped' (not 'completed'), and the wizard advances without treating the step as successfully finished",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Skip the entire wizard dismisses it permanently for the user account",
+      "preconditions": [
+        "User is authenticated and onboarding wizard is active",
+        "User is at any point during the onboarding flow"
+      ],
+      "steps": [
+        "Click or activate the 'Skip entire wizard' option at any step in the onboarding wizard",
+        "Confirm the dismissal if a confirmation prompt appears",
+        "Observe that the wizard is dismissed"
+      ],
+      "expected_result": "The onboarding wizard is dismissed immediately and the user is taken to the main application; the wizard is permanently dismissed for this user account",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Wizard does not reappear on subsequent logins after being skipped entirely",
+      "preconditions": [
+        "User has previously skipped the entire onboarding wizard",
+        "User has logged out of the application"
+      ],
+      "steps": [
+        "Log back in to the application with the same user account",
+        "Observe the application state after login"
+      ],
+      "expected_result": "The onboarding wizard does not appear on login and the user lands directly in the main application interface",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User has immediate full access to all system features after skipping the entire wizard",
+      "preconditions": [
+        "User has just skipped the entire onboarding wizard",
+        "The application has navigated away from the wizard"
+      ],
+      "steps": [
+        "Attempt to access at least three distinct system features immediately after skipping the wizard (e.g., dashboard, settings, core functionality)",
+        "Observe whether each feature is accessible without restriction or additional prompts to complete onboarding"
+      ],
+      "expected_result": "All system features are immediately accessible without any onboarding-related restrictions, banners blocking access, or forced redirects back to the wizard",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User has immediate full access to all system features after skipping individual steps",
+      "preconditions": [
+        "User is authenticated and onboarding wizard is active",
+        "User has skipped one or more individual steps without completing the wizard normally"
+      ],
+      "steps": [
+        "Skip at least one individual step in the onboarding wizard",
+        "Complete or exit the wizard through normal flow after skipping",
+        "Attempt to access system features that might be associated with the skipped steps"
+      ],
+      "expected_result": "All system features are accessible without restriction regardless of which steps were skipped",
+      "priority": "medium",
+      "type": "positive"
+    },
+    {
+      "title": "Wizard skip persistence is scoped to the user account and does not affect other accounts",
+      "preconditions": [
+        "User A has skipped the entire onboarding wizard",
+        "User B exists and has not yet encountered the onboarding wizard"
+      ],
+      "steps": [
+        "Log out of User A's account",
+        "Log in with User B's credentials",
+        "Observe whether the onboarding wizard appears for User B"
+      ],
+      "expected_result": "The onboarding wizard appears normally for User B; the skip state from User A's account does not affect User B's onboarding experience",
+      "priority": "medium",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "A 'Skip' control exists for both individual steps and the entire wizard in the UI, though the exact label or mechanism is not specified in the requirement",
+    "The onboarding wizard is shown to users who have not yet completed or dismissed it on first login",
+    "The permanent dismissal state is stored server-side per user account, not in browser local storage or cookies alone",
+    "There is no mandatory prerequisite that blocks feature access until onboarding is completed — full access is unconditional after skipping",
+    "Individual step skipping is available on each step independently, not only at the start of the wizard"
+  ],
+  "notes": "The requirement does not specify whether a confirmation dialog should appear when skipping the entire wizard; no such test case was added to avoid inventing behavior. It is unclear whether skipped individual steps can be revisited or completed later — no test covers that scenario. The requirement does not define what 'full access' means in terms of specific features, making exhaustive access testing ambiguous. There is no stated behavior for what happens if a user skips some steps and completes the rest — specifically, whether the wizard is then considered 'done' or still 'partially skipped'. The requirement does not address whether skipped steps are surfaced anywhere in user profile or settings for later completion."
+}

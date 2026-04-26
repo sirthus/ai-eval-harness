@@ -1,0 +1,102 @@
+{
+  "requirement_id": "REQ-036",
+  "test_cases": [
+    {
+      "title": "Async export initiated for dataset exceeding 50,000 rows returns immediate acknowledgment with job ID",
+      "preconditions": [
+        "User is authenticated",
+        "User has no active export jobs",
+        "A dataset with more than 50,000 rows is available and accessible to the user"
+      ],
+      "steps": [
+        "Send an export request for a dataset containing 50,001 rows",
+        "Capture the HTTP response immediately"
+      ],
+      "expected_result": "The system returns an immediate acknowledgment response (e.g., HTTP 202 Accepted) containing a unique job ID, without waiting for the export to complete.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Export request for dataset at or below 50,000 rows is NOT processed asynchronously",
+      "preconditions": [
+        "User is authenticated",
+        "A dataset with exactly 50,000 rows is available and accessible to the user"
+      ],
+      "steps": [
+        "Send an export request for a dataset containing exactly 50,000 rows",
+        "Capture the HTTP response"
+      ],
+      "expected_result": "The system does not initiate an asynchronous job for this request; the export is handled synchronously or the response does not include an async job ID.",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "User receives email and in-app notification when async export job completes",
+      "preconditions": [
+        "User is authenticated and has a verified email address",
+        "An async export job has been successfully initiated for a dataset larger than 50,000 rows",
+        "The export job ID is known"
+      ],
+      "steps": [
+        "Wait for the export job to reach a completed state",
+        "Check the user's registered email inbox for an export-ready notification",
+        "Check the user's in-app notification center for an export-ready notification"
+      ],
+      "expected_result": "The user receives both an email notification and an in-app notification indicating the export is ready, each containing or linking to the download.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Download link provided in export notification expires after 48 hours",
+      "preconditions": [
+        "An async export job has completed",
+        "The user has received the download link"
+      ],
+      "steps": [
+        "Record the exact timestamp when the download link was generated",
+        "Access the download link immediately after generation and confirm it is valid",
+        "Advance system or test time to 48 hours and 1 minute after link generation",
+        "Attempt to access the same download link again"
+      ],
+      "expected_result": "The download link is accessible before the 48-hour window expires and returns an error (e.g., HTTP 410 Gone or HTTP 403 Forbidden) after 48 hours have elapsed.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Second concurrent export request for the same user is rejected while an active export job exists",
+      "preconditions": [
+        "User is authenticated",
+        "User already has one active (in-progress) export job for a dataset larger than 50,000 rows"
+      ],
+      "steps": [
+        "Send a second export request for any dataset larger than 50,000 rows using the same user account",
+        "Capture the HTTP response"
+      ],
+      "expected_result": "The system rejects the second export request with an appropriate error response (e.g., HTTP 409 Conflict) indicating the user already has an active export job.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Unauthenticated user cannot initiate an async export request",
+      "preconditions": [
+        "No valid authentication token or session exists"
+      ],
+      "steps": [
+        "Send an export request for a dataset larger than 50,000 rows without any authentication credentials",
+        "Capture the HTTP response"
+      ],
+      "expected_result": "The system rejects the request with an authentication error (e.g., HTTP 401 Unauthorized) and does not create any export job.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "The 50,000-row threshold is exclusive (i.e., async processing applies to datasets with strictly more than 50,000 rows, not exactly 50,000).",
+    "The 48-hour validity window begins at the moment the download link is generated, not when the notification is sent.",
+    "An 'active' export job means any job in a pending or in-progress state; completed, failed, or cancelled jobs do not count toward the concurrent limit.",
+    "The user's email address is already verified and on file; no test cases are required for unverified email scenarios.",
+    "The system provides a way (e.g., a status endpoint or UI indicator) to confirm a job is in an active state, allowing preconditions for concurrency tests to be established.",
+    "A distinct error response or code is returned when the concurrent export limit is reached, distinguishable from other error types."
+  ],
+  "notes": "The requirement does not specify: (1) what happens if the export job fails — whether the user is notified and through which channels; (2) whether the concurrent limit of one applies across all dataset export types or only large async exports; (3) the exact format or content required in the email and in-app notifications; (4) whether a user can cancel an active export job to free up the concurrent slot; (5) what happens to the download link if the underlying exported file is deleted before 48 hours elapse; (6) any rate limiting or queue behavior if the user repeatedly submits new export requests after each one completes. These gaps may require additional test cases once clarified."
+}

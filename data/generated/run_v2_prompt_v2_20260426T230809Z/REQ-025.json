@@ -1,0 +1,109 @@
+{
+  "requirement_id": "REQ-025",
+  "test_cases": [
+    {
+      "title": "Premium-only features are inaccessible immediately after downgrade confirmation",
+      "preconditions": [
+        "User is authenticated as a premium subscriber",
+        "User has access to at least one premium-only feature (e.g. advanced analytics, priority support portal)",
+        "User initiates the downgrade flow to the free tier"
+      ],
+      "steps": [
+        "Log in as a premium user",
+        "Navigate to the account subscription settings",
+        "Initiate downgrade to the free tier",
+        "Confirm the downgrade action",
+        "Without logging out, attempt to access a premium-only feature (e.g. navigate directly to the premium feature URL or UI element)"
+      ],
+      "expected_result": "The premium-only feature is immediately inaccessible (e.g. returns a 403/access-denied response or displays an upgrade prompt) without requiring a session refresh or re-login.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Projects beyond free tier limit (more than 3) become read-only immediately after downgrade",
+      "preconditions": [
+        "User is authenticated as a premium subscriber",
+        "User has exactly 5 active projects",
+        "Free tier limit is 3 active projects"
+      ],
+      "steps": [
+        "Log in as the premium user with 5 active projects",
+        "Confirm downgrade to the free tier",
+        "Attempt to edit content in the 4th and 5th projects (those exceeding the free tier limit)"
+      ],
+      "expected_result": "The 4th and 5th projects are in read-only mode; any attempt to write or modify their content is blocked, while the first 3 projects remain fully editable.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User sees a clear indication of which projects are affected by the downgrade limit",
+      "preconditions": [
+        "User is authenticated as a premium subscriber",
+        "User has more than 3 active projects",
+        "User has just confirmed downgrade to the free tier"
+      ],
+      "steps": [
+        "Log in as the premium user with more than 3 active projects",
+        "Confirm downgrade to the free tier",
+        "Navigate to the projects list or dashboard"
+      ],
+      "expected_result": "Each project exceeding the free tier limit is visually marked (e.g. a 'read-only' badge, warning icon, or inline message) distinguishing it from the projects that retain write access.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Deleting an over-limit project restores write access to the next project in queue",
+      "preconditions": [
+        "User has downgraded from premium to free tier",
+        "User has 4 active projects; the 4th is read-only",
+        "User is on the projects list page"
+      ],
+      "steps": [
+        "Identify the read-only project (4th project)",
+        "Delete the read-only project",
+        "Verify the total active project count is now 3",
+        "Attempt to edit content in the remaining 3 projects"
+      ],
+      "expected_result": "After deletion, the remaining 3 projects are all fully editable and no projects are marked as read-only.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User with 3 or fewer active projects experiences no read-only restriction after downgrade",
+      "preconditions": [
+        "User is authenticated as a premium subscriber",
+        "User has exactly 3 active projects"
+      ],
+      "steps": [
+        "Log in as the premium user with 3 active projects",
+        "Confirm downgrade to the free tier",
+        "Attempt to edit content in all 3 projects"
+      ],
+      "expected_result": "All 3 projects remain fully editable after downgrade; no read-only indicators are displayed.",
+      "priority": "medium",
+      "type": "boundary"
+    },
+    {
+      "title": "Unauthenticated or free-tier user cannot invoke the downgrade endpoint to manipulate account state",
+      "preconditions": [
+        "A valid premium user account exists",
+        "An attacker or free-tier user has the premium user's account ID"
+      ],
+      "steps": [
+        "Without authenticating as the premium user, send a POST request to the downgrade API endpoint (e.g. /api/account/downgrade) using the premium user's account ID",
+        "Inspect the API response"
+      ],
+      "expected_result": "The API returns a 401 Unauthorized or 403 Forbidden response; the premium user's account remains on the premium tier and is not downgraded.",
+      "priority": "high",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The free tier limit is exactly 3 active projects as implied by the parenthetical example in the requirement.",
+    "The system determines which specific projects become read-only (e.g. by creation date ascending or some defined ordering rule); the requirement does not specify selection criteria, so tests assume any deterministic ordering is acceptable.",
+    "Deleting an over-limit project immediately and synchronously reduces the count, potentially restoring write access to previously read-only projects without requiring a page reload.",
+    "Premium-only features are distinct from project-count limits and become completely inaccessible (not read-only) after downgrade.",
+    "The downgrade takes effect at the moment the user confirms the action, not at the end of a billing cycle."
+  ],
+  "notes": "1. The requirement does not specify which projects become read-only when usage exceeds the limit (e.g. the most recently created, the least recently accessed, or user-chosen). This ordering logic should be clarified to enable precise test assertions. 2. The requirement does not define what 'immediately' means in terms of propagation (synchronous vs. eventual consistency); performance/timing tests may be needed. 3. It is unclear whether a user can choose which projects to keep as writable (up to the 3-project limit) or whether the system decides automatically. 4. The requirement does not address what happens to shared or collaborative projects, or projects owned by the user but accessed by others. 5. There is no stated behavior for restoring premium access (re-upgrade); regression tests for that path are not covered here. 6. The specific UI affordance for 'clear indication' is not defined, which makes automated UI assertion brittle without a design spec."
+}

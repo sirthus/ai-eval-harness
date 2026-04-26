@@ -1,0 +1,105 @@
+{
+  "requirement_id": "REQ-013",
+  "test_cases": [
+    {
+      "title": "Successful OAuth redirect to provider authorization page",
+      "preconditions": [
+        "User is not authenticated",
+        "At least one supported third-party OAuth provider is configured and available",
+        "User is on the sign-in page"
+      ],
+      "steps": [
+        "Identify a supported OAuth provider listed on the sign-in page",
+        "Click the sign-in button for that provider"
+      ],
+      "expected_result": "The user is redirected to the selected OAuth provider's authorization page (URL domain matches the known provider's authorization endpoint).",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "New account created and user redirected to dashboard after first-time OAuth authorization",
+      "preconditions": [
+        "User is not authenticated",
+        "No existing account is linked to the OAuth identity being used",
+        "A supported OAuth provider is available"
+      ],
+      "steps": [
+        "Click the sign-in button for a supported OAuth provider",
+        "Complete authorization on the provider's authorization page with credentials that have no existing linked account",
+        "Allow the provider to return the authorization callback to the system"
+      ],
+      "expected_result": "A new user account is created in the system and the user is redirected to their dashboard.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Existing linked account user is logged in and redirected to dashboard after OAuth authorization",
+      "preconditions": [
+        "User is not authenticated",
+        "An account already exists in the system linked to the OAuth identity being used",
+        "A supported OAuth provider is available"
+      ],
+      "steps": [
+        "Click the sign-in button for the supported OAuth provider that is linked to an existing account",
+        "Complete authorization on the provider's authorization page using credentials linked to the existing account",
+        "Allow the provider to return the authorization callback to the system"
+      ],
+      "expected_result": "The user is logged into the existing linked account and redirected to their dashboard, with no duplicate account created.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User denies authorization on OAuth provider page — system handles error gracefully",
+      "preconditions": [
+        "User is not authenticated",
+        "A supported OAuth provider is available",
+        "User is on the sign-in page"
+      ],
+      "steps": [
+        "Click the sign-in button for a supported OAuth provider",
+        "On the provider's authorization page, choose to deny or cancel the authorization request",
+        "Allow the provider to return the denial callback to the system"
+      ],
+      "expected_result": "The user is not logged in or registered, and the system returns them to the sign-in page or displays an appropriate error message without creating a new account.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "OAuth callback with tampered or invalid state parameter is rejected",
+      "preconditions": [
+        "User is not authenticated",
+        "A supported OAuth provider is available"
+      ],
+      "steps": [
+        "Initiate the OAuth sign-in flow for a supported provider",
+        "Intercept the authorization callback URL before it reaches the system",
+        "Modify the 'state' parameter to an arbitrary or mismatched value",
+        "Submit the tampered callback URL to the system"
+      ],
+      "expected_result": "The system rejects the callback, does not create or authenticate any account, and returns an error response indicating an invalid or mismatched state.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Unsupported OAuth provider sign-in attempt is not processed",
+      "preconditions": [
+        "User is not authenticated",
+        "An OAuth provider not in the supported providers list is identified"
+      ],
+      "steps": [
+        "Attempt to initiate an OAuth sign-in flow by crafting or navigating to a request referencing an unsupported provider (e.g., via a manipulated URL parameter)"
+      ],
+      "expected_result": "The system does not redirect to the unsupported provider and returns an error or ignores the request without exposing internal details.",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "The system uses a 'state' parameter or equivalent CSRF protection mechanism during the OAuth flow.",
+    "The sign-in page presents distinct UI controls for each supported OAuth provider.",
+    "The user's dashboard is a defined, accessible page immediately after authentication.",
+    "Account linking is determined by matching a unique identifier returned by the provider (e.g., provider-specific user ID or verified email).",
+    "The system is capable of receiving OAuth callbacks at a known redirect URI registered with each provider."
+  ],
+  "notes": "The requirement does not specify: (1) which specific OAuth providers are supported — test cases reference 'a supported provider' generically; (2) behavior when the provider returns an error other than user denial (e.g., provider downtime, invalid client credentials) — no test case covers this; (3) whether account merging is supported if the same email exists via a different provider or password-based sign-in — edge cases around duplicate email identity linking are not covered; (4) session management details post-login (e.g., token expiry, session duration) are not testable from this requirement; (5) the exact appearance or URL of the dashboard is not specified, limiting precision in the expected result for redirect assertions."
+}

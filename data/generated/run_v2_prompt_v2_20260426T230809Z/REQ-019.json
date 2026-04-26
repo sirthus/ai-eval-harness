@@ -1,0 +1,97 @@
+{
+  "requirement_id": "REQ-019",
+  "test_cases": [
+    {
+      "title": "Overdue indicator displayed when current date is past due date and task is not done",
+      "preconditions": [
+        "A task exists with a due date set to a past date (e.g., yesterday)",
+        "The task status is not 'done' (e.g., 'in progress' or 'open')"
+      ],
+      "steps": [
+        "Retrieve or view the task whose due date is in the past and status is not 'done'",
+        "Observe whether an overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is displayed on the task.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "No overdue indicator displayed when task status is 'done' and due date is in the past",
+      "preconditions": [
+        "A task exists with a due date set to a past date",
+        "The task status is 'done'"
+      ],
+      "steps": [
+        "Retrieve or view the task whose due date is in the past and status is 'done'",
+        "Observe whether an overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is NOT displayed on the task.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "No overdue indicator displayed when due date is today (current date equals due date)",
+      "preconditions": [
+        "A task exists with a due date set to today's date",
+        "The task status is not 'done'"
+      ],
+      "steps": [
+        "Retrieve or view the task whose due date equals today's date and status is not 'done'",
+        "Observe whether an overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is NOT displayed on the task, since the current date is not past (strictly after) the due date.",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "No overdue indicator displayed when task has no due date set",
+      "preconditions": [
+        "A task exists with no due date assigned (due date field is empty/null)",
+        "The task status is not 'done'"
+      ],
+      "steps": [
+        "Retrieve or view the task with no due date and a non-done status",
+        "Observe whether an overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is NOT displayed on the task.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "No overdue indicator displayed when due date is in the future and task is not done",
+      "preconditions": [
+        "A task exists with a due date set to a future date (e.g., tomorrow)",
+        "The task status is not 'done'"
+      ],
+      "steps": [
+        "Retrieve or view the task whose due date is in the future and status is not 'done'",
+        "Observe whether an overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is NOT displayed on the task.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Overdue indicator removed when an overdue task is marked as 'done'",
+      "preconditions": [
+        "A task exists with a due date set to a past date",
+        "The task status is not 'done' and the overdue indicator is currently displayed"
+      ],
+      "steps": [
+        "Update the task status to 'done'",
+        "Retrieve or view the updated task",
+        "Observe whether the overdue indicator is present on the task"
+      ],
+      "expected_result": "The overdue indicator is no longer displayed after the task status is changed to 'done'.",
+      "priority": "high",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The overdue condition uses strict inequality: the current date must be strictly after (not equal to) the due date to trigger the overdue indicator.",
+    "Due date granularity is at the day level (date only, not date-time); if time is involved, boundary behavior may differ.",
+    "All non-'done' statuses (e.g., 'open', 'in progress', 'blocked') are treated equivalently for overdue evaluation.",
+    "The overdue indicator is a single, identifiable element or attribute on the task representation (e.g., a flag, label, or field) that can be deterministically observed."
+  ],
+  "notes": "The requirement does not define what 'overdue indicator' looks like (e.g., UI badge, API boolean field, color change) — test steps are intentionally generic. The exact comparison operator for 'past the due date' (strictly greater than vs. greater than or equal to) is ambiguous; the boundary test case for today's date assumes strict inequality but this should be confirmed. The requirement does not specify behavior when the due date is set to a date in the past at the time of task creation — this scenario is assumed to be handled the same as any other overdue task. No permission or security behaviors are specified for this requirement."
+}

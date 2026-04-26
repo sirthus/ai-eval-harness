@@ -1,0 +1,112 @@
+{
+  "requirement_id": "REQ-035",
+  "test_cases": [
+    {
+      "title": "Export task data for a project with multiple tasks produces a valid JSON file",
+      "preconditions": [
+        "User is authenticated and has access to the target project",
+        "The target project contains at least two tasks with varied field values",
+        "The documented API response schema for the tasks list endpoint is available for comparison"
+      ],
+      "steps": [
+        "Navigate to the target project",
+        "Trigger the export action for the project's task data",
+        "Download the resulting file",
+        "Open and parse the downloaded file as JSON",
+        "Validate the JSON structure against the documented API response schema for the tasks list endpoint",
+        "Verify each task entry contains all required fields defined in the schema"
+      ],
+      "expected_result": "The downloaded file is valid JSON, contains all tasks present in the project, and every field and structure conforms to the documented API response schema for the tasks list endpoint.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Export task data for a project with no tasks produces an empty JSON array",
+      "preconditions": [
+        "User is authenticated and has access to the target project",
+        "The target project exists and contains zero tasks"
+      ],
+      "steps": [
+        "Navigate to the target project that has no tasks",
+        "Trigger the export action for the project's task data",
+        "Download the resulting file",
+        "Open and parse the downloaded file as JSON"
+      ],
+      "expected_result": "The downloaded file is valid JSON containing exactly an empty array (`[]`) and no other top-level content.",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Exported filename matches the required pattern '{project-name}-tasks-{date}.json'",
+      "preconditions": [
+        "User is authenticated and has access to the target project",
+        "The target project has a known name (e.g., 'my-project')",
+        "The current date is known before initiating the export"
+      ],
+      "steps": [
+        "Note the current date in the expected format (format to be confirmed per implementation)",
+        "Navigate to the target project named 'my-project'",
+        "Trigger the export action for the project's task data",
+        "Inspect the filename of the downloaded file"
+      ],
+      "expected_result": "The downloaded file is named 'my-project-tasks-{today's date}.json', where the date matches the date at the time of export and the project name matches the project's name exactly.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Exported file contains only the tasks belonging to the specified project and not tasks from other projects",
+      "preconditions": [
+        "User is authenticated",
+        "At least two projects exist, each containing distinct tasks"
+      ],
+      "steps": [
+        "Note the task IDs/titles in the target project",
+        "Note the task IDs/titles in a different project",
+        "Navigate to the target project",
+        "Trigger the export action for the project's task data",
+        "Download and parse the resulting JSON file",
+        "Check the exported task records against tasks from both projects"
+      ],
+      "expected_result": "The exported JSON contains only the tasks belonging to the target project; no tasks from any other project are present in the file.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Unauthenticated user cannot export project task data",
+      "preconditions": [
+        "No active user session exists (user is logged out)",
+        "A valid project with tasks exists in the system"
+      ],
+      "steps": [
+        "Without logging in, attempt to trigger the export action for a known project's task data (e.g., via direct API call or UI navigation)",
+        "Observe the system response"
+      ],
+      "expected_result": "The system denies the export request and does not return or download any JSON file; an appropriate authentication error (e.g., HTTP 401) is returned.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Exported JSON file is rejected when its structure deviates from the API schema (schema validation negative check)",
+      "preconditions": [
+        "A previously exported JSON file is available",
+        "The documented API response schema for the tasks list endpoint is available"
+      ],
+      "steps": [
+        "Take the exported JSON file and manually alter it to remove a required field defined in the API response schema",
+        "Run the modified file through a JSON schema validator against the documented API response schema",
+        "Observe the validation result"
+      ],
+      "expected_result": "The schema validator reports a validation error, confirming that a file missing required fields does not conform to the documented schema — thereby validating the schema enforcement check used in positive test cases.",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "The exact date format used in the filename (e.g., YYYY-MM-DD, YYYYMMDD) is not specified in the requirement; test cases assume the format is defined in implementation documentation and should be verified against it.",
+    "The project name used in the filename is the project's display/slug name as stored in the system; special characters or spaces in project names may require sanitization, but no handling rule is stated.",
+    "The export action is accessible to authenticated users who have at least read access to the project; role-based access control beyond authentication is not specified.",
+    "The export is triggered synchronously and results in a direct file download; asynchronous export with a separate download link is not assumed.",
+    "The 'date' in the filename refers to the date of the export action, not a task-related date."
+  ],
+  "notes": "The requirement does not specify: (1) the exact date format for the filename pattern, which must be clarified to make filename tests deterministic; (2) how special characters or whitespace in project names are handled in the filename; (3) whether users with restricted roles (e.g., viewer vs. editor) have different export permissions; (4) whether the export includes soft-deleted or archived tasks; (5) the encoding of the JSON file (e.g., UTF-8). Coverage gap: no performance or large-dataset test cases are included because no scale requirements are stated. The schema conformance test relies on an external documented schema whose location and version are not referenced in the requirement."
+}

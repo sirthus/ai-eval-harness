@@ -1,0 +1,110 @@
+{
+  "requirement_id": "REQ-016",
+  "test_cases": [
+    {
+      "title": "Organization admin successfully creates a new project within the organization",
+      "preconditions": [
+        "A valid organization-level admin account exists and is authenticated",
+        "The organization exists in the system"
+      ],
+      "steps": [
+        "Authenticate as the organization-level admin",
+        "Send a request to create a new project within the organization (e.g., POST /organizations/{orgId}/projects with valid project configuration payload)",
+        "Capture the response status and body"
+      ],
+      "expected_result": "The system returns a success response (e.g., HTTP 201) and the new project is created and retrievable within the organization.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Organization admin successfully deletes an existing project within the organization",
+      "preconditions": [
+        "A valid organization-level admin account exists and is authenticated",
+        "At least one project exists within the organization"
+      ],
+      "steps": [
+        "Authenticate as the organization-level admin",
+        "Send a request to delete an existing project (e.g., DELETE /organizations/{orgId}/projects/{projectId})",
+        "Capture the response status",
+        "Attempt to retrieve the deleted project"
+      ],
+      "expected_result": "The system returns a success response (e.g., HTTP 200 or 204) and the deleted project is no longer retrievable.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Organization admin successfully manages a user's organization membership",
+      "preconditions": [
+        "A valid organization-level admin account exists and is authenticated",
+        "At least one non-admin user account exists within the organization"
+      ],
+      "steps": [
+        "Authenticate as the organization-level admin",
+        "Send a request to modify a target user's organization membership (e.g., PUT /organizations/{orgId}/members/{userId} with updated membership payload)",
+        "Capture the response status and body"
+      ],
+      "expected_result": "The system returns a success response and the target user's organization membership reflects the updated state.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Project admin successfully manages their own administered project",
+      "preconditions": [
+        "A valid project-level admin account exists and is authenticated",
+        "The project-level admin is assigned as admin for a specific project (projectA)"
+      ],
+      "steps": [
+        "Authenticate as the project-level admin",
+        "Send a request to read or modify projectA's configuration (e.g., GET /projects/{projectAId} and PUT /projects/{projectAId} with valid payload)",
+        "Capture the response status and body"
+      ],
+      "expected_result": "The system returns a success response and the project-level admin is able to view and update projectA's configuration.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Project admin is denied access to a project they do not administer",
+      "preconditions": [
+        "A valid project-level admin account exists and is authenticated",
+        "The project-level admin is assigned as admin for projectA only",
+        "A separate project (projectB) exists within the same organization"
+      ],
+      "steps": [
+        "Authenticate as the project-level admin of projectA",
+        "Send a request to read projectB's configuration (e.g., GET /projects/{projectBId})",
+        "Capture the response status and body",
+        "Send a request to modify projectB's configuration (e.g., PUT /projects/{projectBId} with a payload)",
+        "Capture the response status and body"
+      ],
+      "expected_result": "The system returns an authorization error (e.g., HTTP 403 Forbidden) for both the read and modify requests on projectB, and no data from projectB is exposed.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Project admin is denied the ability to create or delete projects within the organization",
+      "preconditions": [
+        "A valid project-level admin account exists and is authenticated",
+        "The project-level admin is assigned as admin for a specific project only"
+      ],
+      "steps": [
+        "Authenticate as the project-level admin",
+        "Send a request to create a new project within the organization (e.g., POST /organizations/{orgId}/projects with a valid payload)",
+        "Capture the response status",
+        "Send a request to delete an existing project other than their own (e.g., DELETE /organizations/{orgId}/projects/{otherProjectId})",
+        "Capture the response status"
+      ],
+      "expected_result": "The system returns an authorization error (e.g., HTTP 403 Forbidden) for both the create and delete requests, and no project is created or deleted.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "The system exposes RESTful API endpoints for project and membership management; specific endpoint paths may differ from those used as examples.",
+    "Authentication is handled via a token or session mechanism, and role assignments (org-level admin, project-level admin) are already configured in the system prior to testing.",
+    "A project-level admin has no implicit organization-level admin privileges, and the two roles are mutually exclusive unless explicitly granted.",
+    "Managing a project includes at minimum reading and updating project configuration; the full set of manageable project properties is not defined in the requirement.",
+    "Managing organization membership includes operations such as adding, removing, or changing roles of users within the organization.",
+    "Project-level admins are also restricted from managing user organization membership, as that capability is described only for organization-level admins."
+  ],
+  "notes": "The requirement does not specify: (1) what 'configure' a project entails — the specific configurable attributes are unknown, making exhaustive configuration test cases impossible; (2) whether a project-level admin has any read access to other projects or is completely blinded — the test case conservatively tests for HTTP 403 on both read and write; (3) whether an organization-level admin retains all project-level admin capabilities implicitly, or if these are separate permission sets; (4) what happens when a project admin's project is deleted — their access state post-deletion is untested; (5) whether there is a super-admin or system-admin role above organization-level admin that should be excluded from scope."
+}

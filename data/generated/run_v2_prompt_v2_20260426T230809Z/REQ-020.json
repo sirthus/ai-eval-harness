@@ -1,0 +1,109 @@
+{
+  "requirement_id": "REQ-020",
+  "test_cases": [
+    {
+      "title": "Add a single subtask to an existing task",
+      "preconditions": [
+        "An existing task is present in the system",
+        "User is authenticated and has access to the task"
+      ],
+      "steps": [
+        "Navigate to an existing task",
+        "Initiate the add subtask action",
+        "Enter a valid title for the subtask",
+        "Submit the subtask creation form"
+      ],
+      "expected_result": "The subtask is created and appears under the parent task with the provided title and a default incomplete completion status; the parent task progress indicator updates to show '0/1'.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Add multiple subtasks to an existing task",
+      "preconditions": [
+        "An existing task is present in the system",
+        "User is authenticated and has access to the task"
+      ],
+      "steps": [
+        "Navigate to an existing task",
+        "Add a first subtask with a valid title",
+        "Add a second subtask with a valid title",
+        "Add a third subtask with a valid title"
+      ],
+      "expected_result": "All three subtasks appear under the parent task, each with their respective titles and incomplete status; the progress indicator displays '0/3'.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Attempt to add a subtask with an empty title",
+      "preconditions": [
+        "An existing task is present in the system",
+        "User is authenticated and has access to the task"
+      ],
+      "steps": [
+        "Navigate to an existing task",
+        "Initiate the add subtask action",
+        "Leave the title field empty",
+        "Submit the subtask creation form"
+      ],
+      "expected_result": "The subtask is not created and a validation error is returned indicating that a title is required.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Progress indicator updates correctly as subtasks are completed",
+      "preconditions": [
+        "An existing task has three subtasks, all with incomplete status",
+        "User is authenticated and has access to the task"
+      ],
+      "steps": [
+        "Navigate to the parent task and note the progress indicator shows '0/3'",
+        "Mark the first subtask as complete",
+        "Observe the progress indicator on the parent task",
+        "Mark the second subtask as complete",
+        "Observe the progress indicator on the parent task"
+      ],
+      "expected_result": "After marking the first subtask complete the indicator shows '1/3'; after marking the second it shows '2/3'; the parent task remains in its original incomplete state.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Completing all subtasks does not automatically complete the parent task",
+      "preconditions": [
+        "An existing task has two subtasks, both incomplete",
+        "The parent task has an incomplete completion status",
+        "User is authenticated and has access to the task"
+      ],
+      "steps": [
+        "Navigate to the parent task",
+        "Mark the first subtask as complete",
+        "Mark the second subtask as complete",
+        "Observe the progress indicator and the parent task status"
+      ],
+      "expected_result": "The progress indicator shows '2/2', but the parent task status remains incomplete and is not automatically changed to complete.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Unauthorized user cannot add a subtask to a task",
+      "preconditions": [
+        "An existing task is present in the system",
+        "A user is authenticated but does not have write/edit permission for that task"
+      ],
+      "steps": [
+        "Authenticate as a user without edit permissions for the target task",
+        "Attempt to add a subtask to the task via the API or UI"
+      ],
+      "expected_result": "The system rejects the request with an authorization error (e.g., HTTP 403) and no subtask is created.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "The default completion status of a newly created subtask is 'incomplete'.",
+    "Subtask titles are required and cannot be blank; no maximum length is specified so no boundary test on length is included.",
+    "The progress indicator is updated synchronously or near-synchronously upon marking a subtask complete.",
+    "The system exposes a permission model that can restrict editing tasks; at least one role exists that lacks write access to a task.",
+    "Completing a subtask that was previously complete (i.e., toggling back to incomplete) decrements the progress counter, though no explicit test is included as this behavior is not stated in the requirement."
+  ],
+  "notes": "The requirement does not specify: (1) the maximum number of subtasks allowed per task — no upper boundary test is included; (2) whether subtask completion status can be toggled back to incomplete and how that affects the counter; (3) whether deleting a subtask updates the progress indicator; (4) the format of the progress indicator beyond 'completed out of total' — assumed to be a numeric fraction (e.g., '2/3'); (5) whether nested subtasks (subtasks of subtasks) are permitted — assumed not, based on the requirement only referencing a 'parent task'; (6) what roles or permission model governs subtask creation — the unauthorized test case is based on the assumption that such a model exists."
+}

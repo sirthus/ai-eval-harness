@@ -1,0 +1,103 @@
+{
+  "requirement_id": "REQ-015",
+  "test_cases": [
+    {
+      "title": "Editor successfully creates a task in their project",
+      "preconditions": [
+        "A project exists with at least one member assigned the 'editor' role",
+        "The editor is authenticated and has an active session"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'editor' role in the target project",
+        "Send a POST request (or use UI) to create a new task with valid required fields in the project",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The task is created successfully, a success response (e.g., HTTP 201) is returned, and the new task appears in the project's task list.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Editor successfully edits any existing task in the project",
+      "preconditions": [
+        "A project exists with at least two tasks, one created by a different user",
+        "The authenticated user has the 'editor' role in the project"
+      ],
+      "steps": [
+        "Authenticate as the editor",
+        "Send a PUT/PATCH request (or use UI) to update a task that was created by another user, changing at least one field (e.g., title or description)",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The task is updated successfully, a success response (e.g., HTTP 200) is returned, and the task reflects the new values.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Editor successfully adds a comment to a task",
+      "preconditions": [
+        "A project with at least one task exists",
+        "The authenticated user has the 'editor' role in the project"
+      ],
+      "steps": [
+        "Authenticate as the editor",
+        "Send a POST request (or use UI) to add a comment to an existing task with valid comment content",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The comment is created successfully, a success response (e.g., HTTP 201) is returned, and the comment is associated with the task.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Editor is denied when attempting to delete the project",
+      "preconditions": [
+        "A project exists",
+        "The authenticated user has the 'editor' role in the project"
+      ],
+      "steps": [
+        "Authenticate as the editor",
+        "Send a DELETE request (or use UI) targeting the project itself",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The request is rejected with an authorization error (e.g., HTTP 403 Forbidden), and the project remains intact.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Editor is denied when attempting to modify project-level settings",
+      "preconditions": [
+        "A project exists with configurable project-level settings (e.g., name, visibility, member roles)",
+        "The authenticated user has the 'editor' role in the project"
+      ],
+      "steps": [
+        "Authenticate as the editor",
+        "Send a PUT/PATCH request (or use UI) to modify a project-level setting (e.g., change project name or visibility)",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The request is rejected with an authorization error (e.g., HTTP 403 Forbidden), and the project settings remain unchanged.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Non-editor (viewer/unauthenticated user) is denied task creation",
+      "preconditions": [
+        "A project exists",
+        "The actor is either unauthenticated or assigned a role lower than 'editor' (e.g., 'viewer') in the project"
+      ],
+      "steps": [
+        "Authenticate as a user with a non-editor role (or send the request without authentication)",
+        "Send a POST request (or use UI) to create a new task in the project",
+        "Observe the response or resulting state"
+      ],
+      "expected_result": "The request is rejected with an authorization or authentication error (e.g., HTTP 401 or HTTP 403), and no task is created.",
+      "priority": "medium",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "Role enforcement is applied server-side and cannot be bypassed by manipulating client-side state.",
+    "'Project-level settings' refers to attributes such as project name, description, visibility, and member role assignments, as the requirement does not enumerate them explicitly.",
+    "The system has at least one role with higher privileges than 'editor' (e.g., 'admin' or 'owner') that is permitted to delete projects and modify project settings.",
+    "A 'viewer' or equivalent lower-privilege role exists to support the negative permission test case.",
+    "Adding comments applies to task-level comments; no project-level commenting behavior is defined in this requirement."
+  ],
+  "notes": "The requirement does not specify whether an editor can delete individual tasks (only project deletion is explicitly forbidden); this is a coverage gap and a test case for task deletion by an editor has been omitted pending clarification. The exact set of 'project-level settings' is not defined, which may require additional test cases once the settings catalogue is specified. The requirement does not address rate limiting, input validation on task/comment fields, or concurrent edit behavior."
+}

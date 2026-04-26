@@ -1,0 +1,105 @@
+{
+  "requirement_id": "REQ-012",
+  "test_cases": [
+    {
+      "title": "New session identifier is generated upon successful authentication",
+      "preconditions": [
+        "A valid user account exists in the system",
+        "The user has an active pre-authentication session (e.g., obtained by visiting the login page)"
+      ],
+      "steps": [
+        "Capture the session token/identifier present before authentication (pre-auth token)",
+        "Submit valid credentials to the authentication endpoint",
+        "Capture the session token/identifier returned after successful login (post-auth token)"
+      ],
+      "expected_result": "The post-authentication session identifier is different from the pre-authentication session identifier.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Pre-authentication session token is invalidated after successful login",
+      "preconditions": [
+        "A valid user account exists in the system",
+        "The user has an active pre-authentication session with a known session token"
+      ],
+      "steps": [
+        "Record the pre-authentication session token",
+        "Authenticate successfully with valid credentials",
+        "Send a request to an authenticated or session-dependent endpoint using the recorded pre-authentication session token"
+      ],
+      "expected_result": "The server rejects the pre-authentication session token, returning an unauthorized or session-invalid response (e.g., HTTP 401 or equivalent), and does not process the request as an authenticated session.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Session fixation attack is prevented — pre-supplied session token not adopted post-login",
+      "preconditions": [
+        "A valid user account exists in the system",
+        "An attacker-controlled session token has been injected into the client's cookie/header before authentication"
+      ],
+      "steps": [
+        "Set a known, attacker-controlled session token on the client (e.g., via cookie injection)",
+        "Authenticate successfully using valid credentials",
+        "Attempt to use the attacker-controlled session token to access an authenticated resource"
+      ],
+      "expected_result": "The attacker-controlled pre-authentication session token is not promoted to an authenticated session; any request using it is rejected as unauthenticated.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Failed authentication does not invalidate the existing pre-authentication session",
+      "preconditions": [
+        "The user has an active pre-authentication session",
+        "Invalid credentials are available for testing"
+      ],
+      "steps": [
+        "Record the current pre-authentication session token",
+        "Submit invalid credentials to the authentication endpoint",
+        "Verify the response indicates authentication failure",
+        "Send a request using the original pre-authentication session token"
+      ],
+      "expected_result": "The pre-authentication session token remains valid (i.e., the server still recognizes the session as an unauthenticated session) and was not invalidated by the failed login attempt.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Post-authentication session token is functional for authenticated requests",
+      "preconditions": [
+        "A valid user account exists in the system",
+        "At least one endpoint requires authentication"
+      ],
+      "steps": [
+        "Authenticate successfully with valid credentials",
+        "Capture the newly issued post-authentication session token",
+        "Send a request to an authenticated endpoint using the new session token"
+      ],
+      "expected_result": "The server accepts the new session token and returns an authenticated response (e.g., HTTP 200 with expected authenticated content).",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Pre-authentication session token cannot be replayed after logout and re-login",
+      "preconditions": [
+        "A valid user account exists in the system",
+        "The user completes a full login cycle"
+      ],
+      "steps": [
+        "Record the pre-authentication session token before the first login",
+        "Authenticate successfully and record the new post-authentication token",
+        "Log out to end the authenticated session",
+        "Authenticate again successfully to create a second new session",
+        "Attempt to use the original pre-authentication session token to access a protected resource"
+      ],
+      "expected_result": "The original pre-authentication session token is still rejected and cannot be used to access protected resources.",
+      "priority": "medium",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The system maintains some form of session token or identifier before authentication (e.g., for CSRF protection or anonymous sessions), which is accessible and observable for testing.",
+    "The system exposes at least one endpoint that requires an authenticated session, usable to verify session validity.",
+    "Session tokens are transmitted via cookies or authorization headers and can be captured and replayed by the test client.",
+    "A failed authentication attempt does not constitute 'login completes', so pre-auth session invalidation is not triggered."
+  ],
+  "notes": "The requirement does not specify the transport mechanism for the session identifier (cookie, header, response body), which may affect how test steps capture the token — steps are kept generic to avoid assuming implementation details. The requirement does not define behavior when no pre-authentication session exists (e.g., direct API call with credentials); this scenario is not covered. The requirement does not address concurrent sessions or multi-device scenarios. The exact error response format for an invalidated session is not specified, so expected_result references general unauthorized behavior rather than a specific status code or message."
+}

@@ -1,0 +1,109 @@
+{
+  "requirement_id": "REQ-029",
+  "test_cases": [
+    {
+      "title": "Client error response contains all three required JSON fields with correct HTTP 4xx status",
+      "preconditions": [
+        "API is deployed and accessible",
+        "A request that produces a known 4xx client error can be constructed (e.g., missing required field or invalid parameter)"
+      ],
+      "steps": [
+        "Send a malformed or invalid request to a known API endpoint (e.g., omit a required parameter)",
+        "Capture the full HTTP response including status code and response body",
+        "Parse the response body as JSON",
+        "Verify the response body contains exactly the fields: 'error_code', 'message', and 'request_id'",
+        "Verify no additional top-level fields exist beyond these three"
+      ],
+      "expected_result": "HTTP status code is in the 4xx range, response body is valid JSON with exactly three fields: 'error_code' (non-empty string), 'message' (non-empty string), and 'request_id' (non-empty string), and no other top-level fields are present.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Server error response contains all three required JSON fields with correct HTTP 5xx status",
+      "preconditions": [
+        "API is deployed and accessible",
+        "A mechanism exists to trigger a server-side error (e.g., a test endpoint that intentionally throws an internal exception, or a dependency is made unavailable)"
+      ],
+      "steps": [
+        "Send a request designed to trigger a server-side error condition",
+        "Capture the full HTTP response including status code and response body",
+        "Parse the response body as JSON",
+        "Verify the response body contains exactly the fields: 'error_code', 'message', and 'request_id'",
+        "Verify no additional top-level fields exist beyond these three"
+      ],
+      "expected_result": "HTTP status code is in the 5xx range, response body is valid JSON with exactly three fields: 'error_code' (non-empty string), 'message' (non-empty string), and 'request_id' (non-empty string), and no other top-level fields are present.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Each error response has a unique 'request_id' across multiple distinct requests",
+      "preconditions": [
+        "API is deployed and accessible",
+        "A request that reliably produces an error response can be sent repeatedly"
+      ],
+      "steps": [
+        "Send the same error-inducing request to the API three separate times",
+        "Capture the 'request_id' value from each response body",
+        "Compare all three 'request_id' values against each other"
+      ],
+      "expected_result": "All three 'request_id' values are distinct strings, confirming uniqueness per request.",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Error response 'error_code' field is a machine-readable string (not numeric or null)",
+      "preconditions": [
+        "API is deployed and accessible",
+        "Multiple distinct error conditions can be triggered (e.g., 400, 401, 404, 500)"
+      ],
+      "steps": [
+        "Trigger at least three different types of error conditions across different endpoints",
+        "Capture each error response body",
+        "For each response, inspect the JSON type and value of the 'error_code' field"
+      ],
+      "expected_result": "In every error response, 'error_code' is a non-null, non-empty JSON string value (not a number, boolean, array, or object).",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "HTTP status code semantically matches the error category (4xx vs 5xx)",
+      "preconditions": [
+        "API is deployed and accessible",
+        "Both a client-induced error (e.g., authentication failure, invalid input) and a server-induced error can be triggered"
+      ],
+      "steps": [
+        "Send a request with invalid authentication credentials and record the HTTP status code",
+        "Send a request with a valid payload but trigger a server fault and record the HTTP status code",
+        "Verify that the client error yields a status code in the range 400–499",
+        "Verify that the server fault yields a status code in the range 500–599"
+      ],
+      "expected_result": "The client-induced error returns a 4xx status code and the server fault returns a 5xx status code, confirming semantic alignment between error type and HTTP status.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Error response does not include additional undocumented top-level fields (no field leakage)",
+      "preconditions": [
+        "API is deployed and accessible",
+        "An error condition (any type) can be reliably triggered"
+      ],
+      "steps": [
+        "Trigger an error response from the API",
+        "Parse the response body as JSON",
+        "Enumerate all top-level keys in the JSON object",
+        "Check whether any key exists other than 'error_code', 'message', and 'request_id'"
+      ],
+      "expected_result": "The JSON object contains exactly three keys ('error_code', 'message', 'request_id') and no additional top-level fields such as stack traces, internal identifiers, or debug data.",
+      "priority": "medium",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The requirement applies to all API endpoints and all error conditions, not a subset.",
+    "'machine-readable string identifier' for 'error_code' means a JSON string type (e.g., 'INVALID_PARAMETER'), not a numeric code.",
+    "'unique identifier' for 'request_id' means globally unique per request instance (e.g., UUID), not just unique within a session.",
+    "Successful (2xx) responses are out of scope for this requirement and may have a different structure.",
+    "A mechanism exists in the test environment to deterministically trigger both 4xx and 5xx error conditions."
+  ],
+  "notes": "The requirement does not specify the format or generation strategy for 'request_id' (e.g., UUID v4, correlation ID from request header), making it impossible to validate the exact format — tests only verify non-emptiness and uniqueness. The requirement does not clarify whether the 'request_id' in the error response must match a 'request_id' supplied by the caller in request headers (e.g., X-Request-ID); this correlation behavior cannot be tested without further specification. The requirement does not address whether 'message' should be localized or what language it must be in. No test case covers HTTP 3xx redirects since the requirement scopes only 4xx and 5xx responses. Coverage of every possible HTTP error code (400, 401, 403, 404, 422, 429, 500, 502, 503, etc.) is recommended but would require a comprehensive endpoint-by-endpoint test matrix not possible to define from this requirement alone."
+}
