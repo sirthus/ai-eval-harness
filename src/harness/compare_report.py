@@ -332,10 +332,14 @@ def run(
     csv_path = out_dir / f"compare_{run_id_a}_vs_{run_id_b}_{timestamp}.csv"
     intersection = sorted(set(results_a) & set(results_b))
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "requirement_id", "decision_a", "decision_b",
-            "score_a", "score_b", "delta", "regression", "improvement",
-        ])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "requirement_id", "decision_a", "decision_b",
+                "score_a", "score_b", "delta", "regression", "improvement",
+            ],
+            lineterminator="\n",
+        )
         writer.writeheader()
         deltas = _compute_deltas(results_a, results_b)
         for req_id in intersection:

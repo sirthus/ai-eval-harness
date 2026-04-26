@@ -7,7 +7,7 @@
 #
 # Jobs:
 #   lint          — blocking: runs Ruff on the repo
-#   test          — blocking: runs pytest (the hard quality gate for code)
+#   test          — blocking: runs pytest on Python 3.12 and 3.13
 #   quality-gate  — advisory: checks run manifests for evaluation regressions
 
 name: CI
@@ -31,27 +31,31 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: make install
 
       - name: Run Ruff
-        run: ruff check .
+        run: make lint
 
   test:
-    name: Tests
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: make install
 
       - name: Run tests
-        run: pytest tests/ --cov=harness --cov-report=term-missing -q
+        run: make test-cov
 
   quality-gate:
     name: Quality Gate (advisory)
