@@ -1,0 +1,110 @@
+{
+  "requirement_id": "REQ-006",
+  "test_cases": [
+    {
+      "title": "Successful password reset link request with valid registered email",
+      "preconditions": [
+        "A user account exists with a known registered email address",
+        "The email delivery service is operational"
+      ],
+      "steps": [
+        "Navigate to the forgot password page",
+        "Enter the registered email address in the email field",
+        "Submit the password reset request",
+        "Check the inbox of the registered email address"
+      ],
+      "expected_result": "A password reset email containing a unique reset link is delivered to the specified registered email address within a reasonable time.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Password reset link expires after 60 minutes",
+      "preconditions": [
+        "A valid password reset link has been generated and sent to the user's email",
+        "The system clock can be manipulated or waited on in the test environment"
+      ],
+      "steps": [
+        "Request a password reset for a registered account",
+        "Retrieve the password reset link from the email",
+        "Wait 61 minutes without using the link",
+        "Open the password reset link in a browser",
+        "Attempt to submit a new password using the expired link"
+      ],
+      "expected_result": "The system rejects the request and displays an error indicating the reset link has expired; no password change is applied.",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Password reset link cannot be reused after successful reset",
+      "preconditions": [
+        "A valid password reset link has been generated and sent to the user's email",
+        "The link has not yet been used and has not expired"
+      ],
+      "steps": [
+        "Open the password reset link from the email",
+        "Enter and submit a new valid password",
+        "Confirm the password reset is successful",
+        "Attempt to open the same password reset link again in a browser",
+        "Attempt to submit a new password using the same link"
+      ],
+      "expected_result": "The system rejects the second use of the link and displays an error indicating the link has already been used; no further password change is applied.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Old password is invalidated immediately after successful reset",
+      "preconditions": [
+        "A user account exists with a known current password",
+        "A password reset has been completed successfully using a valid reset link"
+      ],
+      "steps": [
+        "Complete a successful password reset, setting a new password",
+        "Navigate to the login page",
+        "Enter the user's email and the old (pre-reset) password",
+        "Submit the login form"
+      ],
+      "expected_result": "The system denies login and displays an authentication error; the old password is no longer accepted.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Password reset request submitted for a non-registered email address",
+      "preconditions": [
+        "The email address to be used does not correspond to any existing account"
+      ],
+      "steps": [
+        "Navigate to the forgot password page",
+        "Enter an email address that is not registered in the system",
+        "Submit the password reset request",
+        "Check the inbox of the non-registered email address"
+      ],
+      "expected_result": "The system does not send a reset email to the unregistered address; the response to the user does not reveal whether the email address exists in the system (to prevent user enumeration).",
+      "priority": "medium",
+      "type": "security"
+    },
+    {
+      "title": "Password reset link used within the 60-minute validity window is accepted",
+      "preconditions": [
+        "A valid password reset link has been generated and sent to the user's email",
+        "Less than 60 minutes have elapsed since the link was generated"
+      ],
+      "steps": [
+        "Request a password reset for a registered account",
+        "Retrieve the password reset link from the email",
+        "Open the link within 59 minutes of its generation",
+        "Enter and submit a new valid password"
+      ],
+      "expected_result": "The system accepts the new password and confirms the password reset was successful.",
+      "priority": "high",
+      "type": "boundary"
+    }
+  ],
+  "assumptions": [
+    "The system provides a dedicated 'forgot password' page or entry point accessible without authentication.",
+    "The system is expected not to reveal whether an email address is registered (anti-enumeration behavior), as this is a standard security practice implied by the email-based reset flow.",
+    "A 'new valid password' meets whatever password policy the system enforces, even though no policy is specified in this requirement.",
+    "The reset link is unique per request; requesting a new reset link invalidates any previously issued unexpired links for the same account.",
+    "The 60-minute expiry is measured from the time the link is generated, not from the time the email is delivered."
+  ],
+  "notes": "The requirement does not specify: (1) the system's response when a reset is requested for an unregistered email — it is ambiguous whether an error should be shown or a neutral message displayed; (2) whether multiple concurrent reset links for the same account are allowed and how they interact; (3) password complexity or validation rules for the new password; (4) whether the user should be automatically logged in after a successful reset; (5) rate limiting or lockout behavior for repeated reset requests, which is a security concern not addressed. Coverage for rate limiting and concurrent link invalidation is absent due to these gaps."
+}

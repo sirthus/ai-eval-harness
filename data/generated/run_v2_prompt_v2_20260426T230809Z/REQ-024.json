@@ -1,0 +1,110 @@
+{
+  "requirement_id": "REQ-024",
+  "test_cases": [
+    {
+      "title": "Enable a single notification channel independently",
+      "preconditions": [
+        "User is authenticated",
+        "All notification channels (email, in-app, push notification) are currently disabled"
+      ],
+      "steps": [
+        "Navigate to the notification preferences settings",
+        "Enable the email channel only",
+        "Save or confirm the preference change",
+        "Trigger a new notification event"
+      ],
+      "expected_result": "The notification is delivered via email only; in-app and push notification channels do not receive the notification.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Disable one channel without affecting other enabled channels",
+      "preconditions": [
+        "User is authenticated",
+        "All three notification channels (email, in-app, push notification) are currently enabled"
+      ],
+      "steps": [
+        "Navigate to the notification preferences settings",
+        "Disable the email channel",
+        "Save or confirm the preference change",
+        "Trigger a new notification event"
+      ],
+      "expected_result": "The notification is delivered via in-app and push notification channels; no notification is sent via email.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Changes to channel preferences take effect immediately for new notifications",
+      "preconditions": [
+        "User is authenticated",
+        "All notification channels are currently enabled"
+      ],
+      "steps": [
+        "Navigate to the notification preferences settings",
+        "Disable the push notification channel",
+        "Save or confirm the preference change without restarting the session or application",
+        "Trigger a new notification event immediately after saving"
+      ],
+      "expected_result": "The new notification is delivered via email and in-app channels only; no push notification is sent, with no delay or session restart required.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Disable all notification channels simultaneously",
+      "preconditions": [
+        "User is authenticated",
+        "All three notification channels are currently enabled"
+      ],
+      "steps": [
+        "Navigate to the notification preferences settings",
+        "Disable the email channel",
+        "Disable the in-app channel",
+        "Disable the push notification channel",
+        "Save or confirm the preference changes",
+        "Trigger a new notification event"
+      ],
+      "expected_result": "No notification is delivered through any channel (email, in-app, or push notification).",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Unauthenticated user cannot change notification channel preferences",
+      "preconditions": [
+        "No user is currently authenticated (user is logged out)"
+      ],
+      "steps": [
+        "Attempt to directly access the notification preferences settings page or API endpoint",
+        "Try to toggle or submit a change to any notification channel preference"
+      ],
+      "expected_result": "The system denies access to the notification preferences settings and does not apply any channel preference changes for the unauthenticated request.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Each channel can be toggled independently across all three channels",
+      "preconditions": [
+        "User is authenticated",
+        "All three notification channels are currently disabled"
+      ],
+      "steps": [
+        "Enable the in-app channel only and save",
+        "Trigger a new notification event; verify only in-app notification is received",
+        "Enable the push notification channel in addition and save",
+        "Trigger a new notification event; verify in-app and push notifications are received",
+        "Enable the email channel in addition and save",
+        "Trigger a new notification event; verify all three channels deliver the notification"
+      ],
+      "expected_result": "At each step, only the currently enabled channels deliver notifications, confirming each channel is controlled independently.",
+      "priority": "medium",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [
+    "A 'save' or 'confirm' action may or may not be required after toggling; tests assume a save step exists but note this may be implicit (auto-save).",
+    "A 'notification event' can be reliably triggered in the test environment to observe delivery behavior.",
+    "Each delivery channel's output (email received, in-app badge/message visible, push notification received) is observable and verifiable during testing.",
+    "User preferences are stored per-user account, not per-device or per-session.",
+    "The system exposes some form of notification preferences UI or API endpoint that allows toggling individual channels."
+  ],
+  "notes": "The requirement does not specify the UI mechanism (toggle, checkbox, etc.) for enabling/disabling channels, so test steps are kept generic. It is not stated whether disabling a channel affects in-flight or queued notifications, only 'new notifications' — tests are scoped accordingly. There is no mention of a default state (all enabled, all disabled) when a user account is first created; this is a coverage gap. The requirement does not define what constitutes 'immediately' in measurable terms (e.g., within N seconds), making it difficult to set a precise boundary for the immediacy test. No mention of rate-limiting or concurrent preference change conflicts is made."
+}

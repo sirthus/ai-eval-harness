@@ -1,0 +1,113 @@
+{
+  "requirement_id": "REQ-038",
+  "test_cases": [
+    {
+      "title": "Welcome email is sent within 5 minutes after successful registration",
+      "preconditions": [
+        "Email delivery service is operational",
+        "A valid, unused email address is available for registration",
+        "SMTP/email gateway is reachable by the system"
+      ],
+      "steps": [
+        "Submit a valid registration form with a unique email address and a display name",
+        "Complete registration successfully",
+        "Monitor the registered email inbox for an incoming email",
+        "Record the timestamp of registration completion and the timestamp of email receipt"
+      ],
+      "expected_result": "A welcome email is received in the registered email inbox within 5 minutes of registration completion.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Welcome email contains user display name, getting started guide link, and profile settings link",
+      "preconditions": [
+        "Email delivery service is operational",
+        "A valid, unused email address is available for registration",
+        "User registers with a clearly identifiable display name (e.g., 'Jane Doe')"
+      ],
+      "steps": [
+        "Submit a valid registration form with email address and display name 'Jane Doe'",
+        "Complete registration successfully",
+        "Open the received welcome email",
+        "Inspect the email body for the display name 'Jane Doe'",
+        "Inspect the email body for a link to the getting started guide",
+        "Inspect the email body for a link to the profile settings page"
+      ],
+      "expected_result": "The welcome email body contains the text 'Jane Doe', a valid hyperlink to the getting started guide, and a valid hyperlink to the profile settings page.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Registration succeeds when welcome email delivery fails",
+      "preconditions": [
+        "Email delivery service is configured to be unavailable or to simulate a send failure (e.g., invalid SMTP credentials, service mocked to return error)",
+        "A valid, unused email address is available for registration"
+      ],
+      "steps": [
+        "Disable or mock the email delivery service to force a send failure",
+        "Submit a valid registration form and complete the registration flow",
+        "Observe the outcome of the registration process",
+        "Attempt to log in with the newly registered credentials"
+      ],
+      "expected_result": "The registration is marked as successful and the user can log in; no error is surfaced to the user regarding the email failure.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Email send failure is logged when welcome email cannot be delivered",
+      "preconditions": [
+        "Email delivery service is configured to simulate a send failure",
+        "Access to the system's application or error logs is available",
+        "A valid, unused email address is available for registration"
+      ],
+      "steps": [
+        "Disable or mock the email delivery service to force a send failure",
+        "Submit a valid registration form and complete the registration flow",
+        "Access the system's application or error log",
+        "Search for a log entry related to the welcome email send failure for the registered email address"
+      ],
+      "expected_result": "A log entry recording the welcome email send failure is present, referencing the registered email address and the registration event.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Welcome email is sent to the exact email address provided during registration",
+      "preconditions": [
+        "Email delivery service is operational",
+        "Two distinct email addresses are available for testing"
+      ],
+      "steps": [
+        "Register a new account using email address 'testuser_A@example.com' with display name 'User A'",
+        "Complete registration successfully",
+        "Check the inbox of 'testuser_A@example.com' for the welcome email",
+        "Check the inbox of a different email address 'testuser_B@example.com' to confirm no email was sent there"
+      ],
+      "expected_result": "The welcome email is delivered only to 'testuser_A@example.com' and not to any other address.",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Welcome email is not sent for a failed or incomplete registration attempt",
+      "preconditions": [
+        "Email delivery service is operational",
+        "A valid email address is available that has not previously registered"
+      ],
+      "steps": [
+        "Begin the registration flow with a valid email address",
+        "Submit the registration form with invalid data (e.g., mismatched passwords or missing required fields) to trigger a registration failure",
+        "Monitor the email inbox of the provided address for any incoming emails"
+      ],
+      "expected_result": "No welcome email is sent to the provided email address following an unsuccessful registration attempt.",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "The '5-minute' window is measured from the moment the system confirms the registration as successful, not from when the user initiates the process.",
+    "The getting started guide link and profile settings link are absolute URLs (not relative paths) within the email, so their validity can be checked independently.",
+    "The system exposes application logs that are accessible to QA for verification of failure logging.",
+    "The email delivery failure can be reliably reproduced in a test environment by disabling or mocking the email service.",
+    "A 'failed registration' (e.g., validation error) is a distinct state from a 'successful registration', and the system can differentiate these states to suppress the welcome email accordingly."
+  ],
+  "notes": "The requirement does not specify the exact format or wording of the log entry for email failures, so Test Case 4 validates only the presence of a relevant entry rather than its specific format. The requirement does not state whether the user should receive any in-app notification or retry mechanism for the failed email; this is a coverage gap. The exact content structure of the welcome email (plain text vs. HTML, subject line, sender address) is unspecified, which may warrant additional test cases once the design is defined. No maximum retry behavior for failed emails is described, leaving it unclear whether the system will attempt to resend."
+}

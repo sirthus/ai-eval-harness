@@ -1,0 +1,107 @@
+{
+  "requirement_id": "REQ-017",
+  "test_cases": [
+    {
+      "title": "Removed user receives access-denied on next request when no active session",
+      "preconditions": [
+        "A project exists with at least one task and one content item",
+        "User A is a member of the project with verified access",
+        "User A does not have an active session at the time of removal"
+      ],
+      "steps": [
+        "Remove User A from the project via the appropriate admin/owner action",
+        "Authenticate as User A to establish a new session",
+        "Send a GET request to a project task resource (e.g., GET /projects/{projectId}/tasks/{taskId}) as User A",
+        "Send a GET request to a project content resource (e.g., GET /projects/{projectId}/content/{contentId}) as User A"
+      ],
+      "expected_result": "Both requests return an HTTP 403 Forbidden (or equivalent access-denied) response; User A cannot retrieve any project task or content data.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User with active session receives access-denied on next project resource request immediately after removal",
+      "preconditions": [
+        "A project exists with at least one task and one content item",
+        "User A is a member of the project and has an active authenticated session",
+        "User A has successfully accessed a project resource within the current session to confirm access"
+      ],
+      "steps": [
+        "While User A's session remains active, remove User A from the project via the appropriate admin/owner action",
+        "Without User A logging out or refreshing their session, send a GET request to any project task resource using User A's existing session token",
+        "Record the HTTP status code and response body"
+      ],
+      "expected_result": "The request returns an HTTP 403 Forbidden (or equivalent access-denied) response immediately, without any grace period; no project data is returned.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Removed user with active session is redirected on next project resource request",
+      "preconditions": [
+        "A project exists with at least one task",
+        "User A is a member of the project and has an active authenticated session"
+      ],
+      "steps": [
+        "Remove User A from the project while their session is active",
+        "Using User A's active session, send a request to a project resource URL",
+        "Observe the HTTP response code and any Location or redirect header"
+      ],
+      "expected_result": "The response includes a redirect instruction (e.g., HTTP 302/303 with a Location header, or an access-denied page redirect) in addition to or following the access-denied response, directing User A away from the project resource.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "No grace period: access is revoked instantly, not after a delay",
+      "preconditions": [
+        "A project exists with at least one task",
+        "User A is a member of the project and has an active session"
+      ],
+      "steps": [
+        "Record the exact timestamp T1 at which User A is removed from the project",
+        "Immediately (within 1 second of T1) send a request to a project task resource using User A's active session token",
+        "Record the HTTP status code and the timestamp T2 of the response"
+      ],
+      "expected_result": "The access-denied response is received at T2 where T2 - T1 is less than any reasonable grace threshold (e.g., under 2 seconds); no project data is returned in the response.",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Non-member user who was never part of the project cannot access project resources",
+      "preconditions": [
+        "A project exists with at least one task",
+        "User B has a valid system account but has never been added to the project"
+      ],
+      "steps": [
+        "Authenticate as User B",
+        "Send a GET request to a project task resource belonging to the project",
+        "Record the HTTP status code and response body"
+      ],
+      "expected_result": "The request returns an HTTP 403 Forbidden or 404 Not Found response; no project data is exposed to User B.",
+      "priority": "medium",
+      "type": "permission"
+    },
+    {
+      "title": "Remaining project members retain access after another user is removed",
+      "preconditions": [
+        "A project exists with at least one task and one content item",
+        "User A and User B are both members of the project",
+        "User B has an active authenticated session"
+      ],
+      "steps": [
+        "Remove User A from the project",
+        "Using User B's active session, send a GET request to a project task resource",
+        "Send a GET request to a project content resource using User B's session"
+      ],
+      "expected_result": "Both requests return HTTP 200 OK with the expected project task and content data; User B's access is unaffected by the removal of User A.",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "The system uses token-based or session-based authentication; the access control check is performed server-side on every request, not solely at login/session-creation time.",
+    "The redirect destination for the removed user is not specified in the requirement; test cases verify only that a redirect occurs, not the specific destination URL.",
+    "An HTTP 403 Forbidden is the expected access-denied status code; 401 Unauthorized may also be acceptable depending on implementation, but the requirement implies the user is authenticated yet unauthorized.",
+    "The project removal action is performed by an authorized actor (e.g., project owner or administrator); the requirement does not describe who initiates the removal.",
+    "A grace period threshold of 2 seconds is used as a practical upper bound for the no-grace-period boundary test; the actual acceptable latency should be defined by system SLA."
+  ],
+  "notes": "The requirement states the user 'shall be redirected' but does not specify the redirect target (e.g., dashboard, login page, error page). Test cases verify a redirect occurs but cannot assert the destination without further specification. The requirement does not clarify whether access-denied should be HTTP 403 or a different code, nor whether the redirect is a server-side HTTP redirect or a client-side navigation — this ambiguity is reflected in the test steps. It is also unspecified whether removal should invalidate the active session token entirely or merely deny access to project-scoped resources; this distinction could have broader security implications. Coverage of write operations (POST/PUT/DELETE on project resources) is not included because the requirement only references 'requests to a project resource' without distinguishing read vs. write, but separate test cases for write operations may be warranted."
+}

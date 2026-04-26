@@ -1,0 +1,98 @@
+{
+  "requirement_id": "REQ-028",
+  "test_cases": [
+    {
+      "title": "Current active API version returns valid response without deprecation headers",
+      "preconditions": [
+        "At least one current (non-deprecated, non-sunset) API version exists and is deployed (e.g. /v2/)",
+        "A valid endpoint exists under the current version (e.g. /v2/resources)"
+      ],
+      "steps": [
+        "Send a GET request to a known endpoint under the current active version, e.g. GET /v2/resources",
+        "Capture the HTTP response status code and headers"
+      ],
+      "expected_result": "The response returns HTTP 2xx with a valid response body, and neither a 'Deprecation' header nor an 'X-API-Sunset-Date' header is present.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Deprecated but still active API version returns valid response with Deprecation and X-API-Sunset-Date headers",
+      "preconditions": [
+        "At least one deprecated but still active API version exists and is deployed (e.g. /v1/)",
+        "A valid endpoint exists under that deprecated version (e.g. /v1/resources)",
+        "The API is configured to treat this version as deprecated"
+      ],
+      "steps": [
+        "Send a GET request to a known endpoint under the deprecated active version, e.g. GET /v1/resources",
+        "Capture the HTTP response status code, body, and all response headers"
+      ],
+      "expected_result": "The response returns HTTP 2xx with a valid response body, and both the 'Deprecation' header and the 'X-API-Sunset-Date' header are present in the response.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Deprecated API version Deprecation header contains a non-empty value",
+      "preconditions": [
+        "A deprecated but still active API version exists (e.g. /v1/)",
+        "A valid endpoint exists under that version (e.g. /v1/resources)"
+      ],
+      "steps": [
+        "Send a GET request to a known endpoint under the deprecated version, e.g. GET /v1/resources",
+        "Inspect the value of the 'Deprecation' response header",
+        "Inspect the value of the 'X-API-Sunset-Date' response header"
+      ],
+      "expected_result": "Both the 'Deprecation' header and the 'X-API-Sunset-Date' header are present and contain non-empty values.",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Request to an unsupported API version returns HTTP 404",
+      "preconditions": [
+        "The API server is running",
+        "The version prefix used in the request (e.g. /v999/) does not correspond to any deployed or deprecated version"
+      ],
+      "steps": [
+        "Send a GET request using a nonexistent version prefix, e.g. GET /v999/resources",
+        "Capture the HTTP response status code"
+      ],
+      "expected_result": "The response returns HTTP 404.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Request to a completely malformed version prefix returns HTTP 404",
+      "preconditions": [
+        "The API server is running",
+        "The path used does not match any valid version pattern (e.g. /vX/, /version1/, /0/)"
+      ],
+      "steps": [
+        "Send a GET request with a malformed version prefix, e.g. GET /vX/resources",
+        "Capture the HTTP response status code"
+      ],
+      "expected_result": "The response returns HTTP 404.",
+      "priority": "medium",
+      "type": "boundary"
+    },
+    {
+      "title": "Request to a formerly active but now fully removed (sunset) API version returns HTTP 404",
+      "preconditions": [
+        "A previously deployed API version has been fully removed and is no longer active (e.g. /v0/)",
+        "The version is not configured as deprecated-but-active"
+      ],
+      "steps": [
+        "Send a GET request to a known endpoint path using the removed version prefix, e.g. GET /v0/resources",
+        "Capture the HTTP response status code"
+      ],
+      "expected_result": "The response returns HTTP 404, with no valid response body for the resource.",
+      "priority": "high",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "A 'current' (non-deprecated) version exists alongside at least one deprecated version for testing contrast between header presence and absence.",
+    "The 'Deprecation' header format and the 'X-API-Sunset-Date' date format are not specified in the requirement; tests only assert presence and non-emptiness of these headers.",
+    "Versioning applies uniformly to all endpoints under a given version prefix, so any representative endpoint can be used to verify versioning behavior.",
+    "A version that has passed its sunset date and is fully removed is considered 'unsupported' and should return HTTP 404, not a deprecated response."
+  ],
+  "notes": "The requirement does not specify: (1) the exact format or allowed values for the 'Deprecation' header (e.g. boolean 'true', a date string, or a URL); (2) the date format for 'X-API-Sunset-Date'; (3) whether the 404 for unsupported versions should include a structured error body; (4) whether versioning applies only to certain resource paths or all paths; (5) how the transition from 'deprecated' to 'unsupported' is managed operationally. Coverage gaps exist around performance under version routing, behavior when the version prefix is present but the sub-path does not exist, and authentication/authorization interactions with versioned endpoints."
+}

@@ -1,0 +1,89 @@
+{
+  "requirement_id": "REQ-005",
+  "test_cases": [
+    {
+      "title": "Registration with an already-registered email displays duplicate email error",
+      "preconditions": [
+        "An account with email 'existing@example.com' is already registered and active in the system"
+      ],
+      "steps": [
+        "Navigate to the registration page",
+        "Enter 'existing@example.com' in the email field",
+        "Enter valid values for all other required registration fields",
+        "Submit the registration form"
+      ],
+      "expected_result": "The system displays a clear error message indicating that the email address 'existing@example.com' is already in use, and no new account is created",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Existing account data remains unmodified after duplicate registration attempt",
+      "preconditions": [
+        "An account with email 'existing@example.com' exists with known profile data (e.g., username, password hash, creation date)"
+      ],
+      "steps": [
+        "Record all current field values of the existing account associated with 'existing@example.com'",
+        "Navigate to the registration page",
+        "Enter 'existing@example.com' in the email field along with different credentials (e.g., a different username and password)",
+        "Submit the registration form",
+        "Retrieve the account record for 'existing@example.com' from the system"
+      ],
+      "expected_result": "All fields of the existing account (username, password hash, creation date, and any other stored data) are identical to those recorded before the duplicate registration attempt",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Registration with a unique email succeeds without error",
+      "preconditions": [
+        "The email 'newuser@example.com' is not associated with any existing account"
+      ],
+      "steps": [
+        "Navigate to the registration page",
+        "Enter 'newuser@example.com' in the email field",
+        "Enter valid values for all other required registration fields",
+        "Submit the registration form"
+      ],
+      "expected_result": "The system creates a new account and does not display a duplicate email error message",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Duplicate email check is case-insensitive",
+      "preconditions": [
+        "An account with email 'Existing@Example.com' (mixed case) is already registered in the system"
+      ],
+      "steps": [
+        "Navigate to the registration page",
+        "Enter 'existing@example.com' (all lowercase) in the email field",
+        "Enter valid values for all other required registration fields",
+        "Submit the registration form"
+      ],
+      "expected_result": "The system displays a clear error message indicating the email is already in use, treating the addresses as equivalent regardless of case differences",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Error message content is clear and specific about the email conflict",
+      "preconditions": [
+        "An account with email 'existing@example.com' is already registered in the system"
+      ],
+      "steps": [
+        "Navigate to the registration page",
+        "Enter 'existing@example.com' in the email field",
+        "Enter valid values for all other required registration fields",
+        "Submit the registration form",
+        "Inspect the error message displayed on the page"
+      ],
+      "expected_result": "The displayed error message explicitly references that the email address is already in use (e.g., contains wording such as 'email already in use' or 'account already exists'), without exposing sensitive account details",
+      "priority": "medium",
+      "type": "security"
+    }
+  ],
+  "assumptions": [
+    "The registration form requires at minimum an email address and at least one other field (e.g., password)",
+    "The system stores email addresses and supports lookup by email at registration time",
+    "A 'clear error message' means the error is visible in the UI response to the same registration request, not delivered via a separate channel such as email",
+    "The requirement applies to all account states (active, inactive, unverified) — i.e., any existing account record blocks re-registration with the same email"
+  ],
+  "notes": "The requirement does not specify whether the email uniqueness check should be case-insensitive; a test case has been added to surface this ambiguity. The requirement does not define what constitutes a 'clear' error message (e.g., exact wording, placement, styling), making it impossible to assert a precise message string. The requirement does not address soft-deleted or deactivated accounts — it is unclear whether a previously deleted account's email should still block registration. No guidance is given on API-level behavior (HTTP status codes, response body structure) if registration is exposed via an API endpoint."
+}

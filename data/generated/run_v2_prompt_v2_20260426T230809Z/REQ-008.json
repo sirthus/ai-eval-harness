@@ -1,0 +1,104 @@
+{
+  "requirement_id": "REQ-008",
+  "test_cases": [
+    {
+      "title": "Search with SQL metacharacters returns safe results without injection",
+      "preconditions": [
+        "The task search feature is accessible",
+        "At least one task exists in the system",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"' OR '1'='1\" into the task search input field",
+        "Submit the search"
+      ],
+      "expected_result": "The system returns only tasks legitimately matching the literal string (likely none), does not expose unfiltered data from the database, and displays the search term \"' OR '1'='1\" back to the user without modification.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Search with double quotes returns correct results and echoes input unchanged",
+      "preconditions": [
+        "The task search feature is accessible",
+        "A task with the title containing the word 'design' exists in the system",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"\\\"design\\\"\" (a word surrounded by double quotes) into the task search input field",
+        "Submit the search",
+        "Observe the results list and the displayed search term"
+      ],
+      "expected_result": "Search results are returned without system error, and the search term displayed back to the user is exactly \"\\\"design\\\"\" with the double quotes preserved.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search with angle brackets does not execute as HTML or script",
+      "preconditions": [
+        "The task search feature is accessible",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"<script>alert('xss')</script>\" into the task search input field",
+        "Submit the search",
+        "Observe the page rendering and the displayed search term"
+      ],
+      "expected_result": "No script executes in the browser, the page renders normally, and the search term is displayed back to the user as the literal text \"<script>alert('xss')</script>\" (properly escaped in the UI) without modification to the input intent.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Search with ampersand character returns results and echoes input correctly",
+      "preconditions": [
+        "The task search feature is accessible",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"design & review\" into the task search input field",
+        "Submit the search",
+        "Observe the results list and the displayed search term"
+      ],
+      "expected_result": "The system processes the query without error, returns relevant results, and the search term displayed to the user is exactly \"design & review\" with the ampersand preserved and not encoded as \"&amp;\" or otherwise altered visually.",
+      "priority": "medium",
+      "type": "positive"
+    },
+    {
+      "title": "Search with a combination of multiple special characters handles all safely",
+      "preconditions": [
+        "The task search feature is accessible",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"<task> 'name' & \\\"value\\\" -- comment\" into the task search input field",
+        "Submit the search",
+        "Observe the system response, results list, and the displayed search term"
+      ],
+      "expected_result": "The system returns results (or an empty set) without throwing a server error, no injection or script execution occurs, and the search term is echoed back exactly as entered: \"<task> 'name' & \\\"value\\\" -- comment\".",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Search with only special characters and no alphanumeric content returns graceful response",
+      "preconditions": [
+        "The task search feature is accessible",
+        "User is authenticated and on the search page"
+      ],
+      "steps": [
+        "Enter the query \"<>&\\\"'--\" (only special characters, no letters or digits) into the task search input field",
+        "Submit the search",
+        "Observe the system response and any error messages"
+      ],
+      "expected_result": "The system does not crash or return a 500 error, returns an empty result set or a no-results message, and the search term \"<>&\\\"'--\" is displayed back to the user without modification.",
+      "priority": "medium",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The search term is rendered somewhere on the results page (e.g., 'Showing results for: <term>'), making it observable for echo-back verification.",
+    "Authentication is required to access the search feature; unauthenticated access is handled by a separate requirement.",
+    "The system uses a relational database backend, making SQL injection a relevant attack vector.",
+    "The front-end renders content in a browser context, making XSS via angle brackets a relevant security concern.",
+    "'Without modification to the original input intent' is interpreted as the displayed text being visually identical to what the user typed, even if the underlying HTML encoding differs (e.g., &amp; is acceptable as long as the browser renders &)."
+  ],
+  "notes": "The requirement does not define what 'correctly handle' means for search results — it is unclear whether special characters should be treated as literals, operators, or ignored. Test cases assume literal matching. The requirement does not specify which other special characters beyond quotes, angle brackets, ampersands, and SQL metacharacters should be covered (e.g., null bytes, Unicode control characters, backslashes) — these are a coverage gap. The distinction between 'without modification to the original input intent' and exact character-level echo-back is ambiguous and may need clarification from the product owner. No performance or pagination behavior for large result sets triggered by wildcard-like special characters (e.g., %) is addressed here."
+}

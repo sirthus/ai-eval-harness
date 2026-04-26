@@ -1,0 +1,114 @@
+{
+  "requirement_id": "REQ-001",
+  "test_cases": [
+    {
+      "title": "Successful login with valid email and correct password redirects to dashboard",
+      "preconditions": [
+        "A registered user account exists with a known valid email and correct password",
+        "The user is not currently logged in",
+        "The login form is accessible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter the registered user's valid email address into the email field",
+        "Enter the correct password into the password field",
+        "Submit the login form"
+      ],
+      "expected_result": "The user is authenticated and redirected to their personal dashboard page",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Session token is created and present after successful login",
+      "preconditions": [
+        "A registered user account exists with a known valid email and correct password",
+        "The user is not currently logged in",
+        "Browser developer tools or a proxy tool is available to inspect cookies/headers"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter the registered user's valid email address into the email field",
+        "Enter the correct password into the password field",
+        "Submit the login form",
+        "Inspect the response cookies or authorization headers for a session token"
+      ],
+      "expected_result": "A session token is present in the response (e.g., as a cookie or header) after successful authentication",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Session token is stored with secure attributes",
+      "preconditions": [
+        "A registered user account exists with a known valid email and correct password",
+        "The user is not currently logged in",
+        "Browser developer tools or a proxy tool is available to inspect cookie attributes"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter the registered user's valid email address into the email field",
+        "Enter the correct password into the password field",
+        "Submit the login form",
+        "Inspect the session token cookie attributes in the browser or intercepted response"
+      ],
+      "expected_result": "The session token cookie has the Secure and HttpOnly flags set, and is transmitted only over HTTPS",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Login fails and no session token is created when correct email is submitted with incorrect password",
+      "preconditions": [
+        "A registered user account exists with a known valid email",
+        "The user is not currently logged in",
+        "The login form is accessible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter the registered user's valid email address into the email field",
+        "Enter an incorrect password into the password field",
+        "Submit the login form",
+        "Inspect cookies and headers for a session token"
+      ],
+      "expected_result": "The user is not authenticated, remains on the login page (or receives an error response), and no session token is created",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Login fails when a non-registered email is submitted",
+      "preconditions": [
+        "The login form is accessible",
+        "The email address used does not correspond to any registered account"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter an email address that is not registered in the system",
+        "Enter any password into the password field",
+        "Submit the login form"
+      ],
+      "expected_result": "The user is not authenticated, is not redirected to the dashboard, and no session token is created",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Login form submission with empty email and password fields is rejected",
+      "preconditions": [
+        "The login form is accessible",
+        "The user is not currently logged in"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Leave both the email and password fields empty",
+        "Submit the login form"
+      ],
+      "expected_result": "The system rejects the submission, the user is not authenticated, and no session token is created",
+      "priority": "medium",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The session token is delivered via an HTTP cookie or an Authorization header in the login response",
+    "'Stored securely' is interpreted to mean the session token cookie has at minimum the HttpOnly and Secure flags set and is transmitted over HTTPS",
+    "The personal dashboard is a distinct page/route unique to the authenticated user",
+    "The system returns a non-success HTTP status or keeps the user on the login page when authentication fails"
+  ],
+  "notes": "The requirement does not specify: (1) the exact error message or HTTP status code returned on failed login, making failure-case expected results partially ambiguous; (2) the session token storage mechanism (cookie vs. localStorage vs. header), so security test cases assume cookie-based storage; (3) session expiry or token rotation behavior, which are untested; (4) whether multi-factor authentication or account lockout after repeated failures applies — these behaviors are not covered."
+}

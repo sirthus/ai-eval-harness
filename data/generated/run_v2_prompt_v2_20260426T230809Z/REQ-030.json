@@ -1,0 +1,103 @@
+{
+  "requirement_id": "REQ-030",
+  "test_cases": [
+    {
+      "title": "First page response includes valid next_cursor and null prev_cursor",
+      "preconditions": [
+        "At least two pages of data exist for the target list endpoint",
+        "No cursor parameter is included in the request"
+      ],
+      "steps": [
+        "Send a GET request to a list endpoint (e.g., /items) without any cursor parameter",
+        "Capture the HTTP response body",
+        "Inspect the response envelope for 'next_cursor' and 'prev_cursor' fields"
+      ],
+      "expected_result": "Response returns HTTP 200, the envelope contains a non-null 'next_cursor' value and a 'prev_cursor' that is null or absent, and the data array is non-empty.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Using next_cursor retrieves the subsequent page of results",
+      "preconditions": [
+        "At least two pages of data exist for the target list endpoint",
+        "A valid 'next_cursor' value has been obtained from a previous list response"
+      ],
+      "steps": [
+        "Send a GET request to a list endpoint without any cursor parameter and record the first page's data and 'next_cursor' value",
+        "Send a second GET request to the same endpoint with the query parameter cursor=<next_cursor_value>",
+        "Compare the data items in the second response against the first response"
+      ],
+      "expected_result": "Response returns HTTP 200, the second page contains a distinct, non-overlapping set of items compared to the first page, and the response envelope includes 'next_cursor' and 'prev_cursor' fields.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Last page response contains null or absent next_cursor",
+      "preconditions": [
+        "A finite, known dataset exists so that the last page can be reached",
+        "Cursor values have been followed sequentially to reach the last page"
+      ],
+      "steps": [
+        "Send a GET request to the list endpoint without a cursor parameter",
+        "Repeatedly follow 'next_cursor' values by issuing new requests until 'next_cursor' is null or absent in the response",
+        "Inspect the final response envelope"
+      ],
+      "expected_result": "The final response returns HTTP 200, 'next_cursor' is null or absent in the envelope, and the data array contains only the remaining items with no duplication from prior pages.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Using prev_cursor navigates back to the previous page",
+      "preconditions": [
+        "At least two pages of data exist",
+        "A valid 'prev_cursor' value has been obtained from the second or later page response"
+      ],
+      "steps": [
+        "Send a GET request without a cursor to obtain the first page; record its data items",
+        "Send a GET request using the 'next_cursor' from step 1 to obtain the second page; record its 'prev_cursor' value",
+        "Send a GET request using cursor=<prev_cursor_value> from the second page",
+        "Compare the returned items against the first page items recorded in step 1"
+      ],
+      "expected_result": "Response returns HTTP 200 and the items returned match those from the first page, confirming backward navigation is functional.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Request with an invalid or tampered cursor value returns an appropriate error",
+      "preconditions": [
+        "The list endpoint is accessible"
+      ],
+      "steps": [
+        "Send a GET request to the list endpoint with an invalid cursor value (e.g., cursor=INVALID_CURSOR_XYZ)",
+        "Inspect the HTTP response status code and body"
+      ],
+      "expected_result": "Response returns an HTTP 4xx error (e.g., 400 Bad Request) and the body contains an error message indicating the cursor is invalid; no data items are returned.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Expired or already-consumed cursor returns an appropriate error or empty result",
+      "preconditions": [
+        "A cursor value has been obtained that is no longer valid (e.g., has expired per system TTL policy or been explicitly invalidated)",
+        "The list endpoint is accessible"
+      ],
+      "steps": [
+        "Obtain a cursor value from a previous list response",
+        "Wait for the cursor to expire or simulate expiry as applicable",
+        "Send a GET request to the list endpoint using the expired cursor value",
+        "Inspect the HTTP response status code and body"
+      ],
+      "expected_result": "Response returns an HTTP 4xx error (e.g., 400 or 410 Gone) or a clearly documented fallback behavior such as restarting pagination; the system does not silently return incorrect or duplicate data.",
+      "priority": "medium",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "Cursor values are passed as a query parameter (e.g., ?cursor=<value>); the exact parameter name is not specified in the requirement.",
+    "The requirement applies to all list endpoints uniformly; individual endpoint-level exceptions are not accounted for.",
+    "A 'response envelope' is a top-level JSON object wrapping the data array alongside metadata fields including 'next_cursor' and 'prev_cursor'.",
+    "Cursors may have an expiration or invalidation policy; the exact policy is not stated in the requirement.",
+    "Page size (limit) is a separate concern and may be controlled by another mechanism not described in this requirement."
+  ],
+  "notes": "The requirement does not specify: (1) the exact query parameter name for submitting a cursor to the server; (2) whether 'prev_cursor' is null or absent on the first page — both are tested as equivalent; (3) the behavior when an expired or previously used cursor is submitted, which is a significant gap; (4) whether cursor values are opaque tokens or structured values, which affects security testing for cursor forgery/tampering; (5) no page size or 'limit' parameter behavior is described, leaving boundary testing for result counts incomplete; (6) there is no mention of what 'next_cursor' and 'prev_cursor' should equal on a single-page result set (both null?), which is an ambiguity requiring clarification."
+}

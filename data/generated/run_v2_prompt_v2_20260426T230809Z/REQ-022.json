@@ -1,0 +1,103 @@
+{
+  "requirement_id": "REQ-022",
+  "test_cases": [
+    {
+      "title": "Search returns all tasks when no filters are active",
+      "preconditions": [
+        "At least one task exists in the system",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with no filters applied (status, assignee, and due date range all unset)",
+        "Receive the response"
+      ],
+      "expected_result": "The response contains a non-empty list of tasks, including all tasks the user has access to",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search with a single status filter returns only tasks matching that status",
+      "preconditions": [
+        "Tasks exist with at least two distinct status values (e.g., 'Open' and 'Closed')",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with status filter set to a single value (e.g., 'Open')",
+        "Receive the response",
+        "Inspect each returned task's status field"
+      ],
+      "expected_result": "Every task in the result set has the status value 'Open'; tasks with other status values are absent",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search with multiple status values returns tasks matching any of the specified statuses",
+      "preconditions": [
+        "Tasks exist with at least three distinct status values (e.g., 'Open', 'In Progress', 'Closed')",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with the status filter set to two values (e.g., 'Open' and 'In Progress')",
+        "Receive the response",
+        "Inspect the status field of each returned task"
+      ],
+      "expected_result": "Every returned task has a status of either 'Open' or 'In Progress'; tasks with status 'Closed' are absent",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search with all three filters active returns only tasks matching ALL filters simultaneously",
+      "preconditions": [
+        "Tasks exist that satisfy various combinations of status, assignee, and due date",
+        "At least one task exists that matches status='Open', assignee='user_A', and due date within '2024-06-01' to '2024-06-30'",
+        "At least one task exists that matches status='Open' and assignee='user_A' but falls outside the specified due date range",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with status filter set to 'Open', assignee filter set to 'user_A', and due date range set to start='2024-06-01' and end='2024-06-30'",
+        "Receive the response",
+        "Inspect the status, assignee, and due date fields of each returned task"
+      ],
+      "expected_result": "Every returned task has status='Open', is assigned to 'user_A', and has a due date between 2024-06-01 and 2024-06-30 inclusive; tasks failing any single filter criterion are absent",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search with filters that match no existing tasks returns an empty result set",
+      "preconditions": [
+        "Tasks exist in the system",
+        "No task exists that matches the combination of the chosen filter values",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with an assignee filter set to a valid user who has no assigned tasks and a status filter set to 'Closed'",
+        "Receive the response"
+      ],
+      "expected_result": "The response returns a valid, empty result set (e.g., an empty array) with a success status code, and no error is raised",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Search with an invalid due date range (start date after end date) is rejected",
+      "preconditions": [
+        "Tasks exist in the system",
+        "The user is authenticated and has access to the task search feature"
+      ],
+      "steps": [
+        "Send a search request with due date range where start date is '2024-12-31' and end date is '2024-01-01'",
+        "Receive the response"
+      ],
+      "expected_result": "The system returns an error response indicating the due date range is invalid; no task results are returned",
+      "priority": "medium",
+      "type": "boundary"
+    }
+  ],
+  "assumptions": [
+    "The due date range filter is inclusive of both the start date and end date boundaries.",
+    "Multiple status or assignee values within a single filter are combined with OR logic, while different filter types (status vs. assignee vs. due date) are combined with AND logic.",
+    "The system returns an HTTP success status code (e.g., 200) even when the result set is empty, distinguishing an empty result from an error condition.",
+    "A user must be authenticated to access the task search feature; unauthenticated access is outside the scope of this requirement.",
+    "Providing no value for a filter type (omitting it) means that filter is inactive and imposes no restriction on results."
+  ],
+  "notes": "The requirement does not specify: (1) what constitutes valid status values, making it impossible to enumerate exhaustive status-specific tests; (2) whether the due date range is inclusive or exclusive at boundaries — boundary behavior should be clarified; (3) how partial filter inputs are handled (e.g., providing a start date but no end date); (4) pagination, sorting, or result size limits on the returned task list; (5) whether the search is scoped to tasks visible to the requesting user or all tasks in the system, which has authorization implications not covered here; (6) behavior when an assignee filter references a non-existent user ID. These ambiguities represent coverage gaps."
+}

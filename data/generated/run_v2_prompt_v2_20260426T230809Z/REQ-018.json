@@ -1,0 +1,114 @@
+{
+  "requirement_id": "REQ-018",
+  "test_cases": [
+    {
+      "title": "Bulk reassign selected tasks to a different user successfully",
+      "preconditions": [
+        "User is authenticated and logged in",
+        "At least two tasks exist in the task list",
+        "At least one other user exists in the system to reassign tasks to"
+      ],
+      "steps": [
+        "Navigate to the task list view",
+        "Select two or more tasks using their individual checkboxes",
+        "Invoke the bulk 'Reassign' operation from the bulk actions menu/toolbar",
+        "Select a target user from the reassignment options",
+        "Confirm the reassignment action"
+      ],
+      "expected_result": "All selected tasks are reassigned to the chosen user simultaneously, and the task list reflects the updated assignee for every selected task without any partial updates.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Bulk delete displays confirmation dialog with correct task count",
+      "preconditions": [
+        "User is authenticated and logged in",
+        "At least three tasks exist in the task list"
+      ],
+      "steps": [
+        "Navigate to the task list view",
+        "Select exactly three tasks using their individual checkboxes",
+        "Invoke the bulk 'Delete' operation from the bulk actions menu/toolbar"
+      ],
+      "expected_result": "A confirmation dialog is displayed showing the count of tasks to be deleted as exactly 3.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Bulk delete proceeds and removes all selected tasks after confirmation",
+      "preconditions": [
+        "User is authenticated and logged in",
+        "At least two tasks exist in the task list",
+        "The bulk delete confirmation dialog is displayed with the correct task count"
+      ],
+      "steps": [
+        "Navigate to the task list view",
+        "Select two tasks using their individual checkboxes",
+        "Invoke the bulk 'Delete' operation",
+        "Confirm the deletion in the confirmation dialog"
+      ],
+      "expected_result": "All selected tasks are deleted atomically and no longer appear in the task list; unselected tasks remain unaffected.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Bulk delete cancelled from confirmation dialog leaves tasks intact",
+      "preconditions": [
+        "User is authenticated and logged in",
+        "At least two tasks exist in the task list"
+      ],
+      "steps": [
+        "Navigate to the task list view",
+        "Select two tasks using their individual checkboxes",
+        "Invoke the bulk 'Delete' operation",
+        "Click 'Cancel' or dismiss the confirmation dialog without confirming"
+      ],
+      "expected_result": "No tasks are deleted; all previously selected tasks remain in the task list and their selection state is preserved or reset without data loss.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Bulk status change applied atomically to all selected tasks",
+      "preconditions": [
+        "User is authenticated and logged in",
+        "At least two tasks with different current statuses exist in the task list",
+        "Multiple valid task statuses are available in the system"
+      ],
+      "steps": [
+        "Navigate to the task list view",
+        "Select two or more tasks using their individual checkboxes",
+        "Invoke the bulk 'Change Status' operation from the bulk actions menu/toolbar",
+        "Select a target status from the available options",
+        "Confirm the status change"
+      ],
+      "expected_result": "All selected tasks have their status updated to the chosen status simultaneously; no task is partially updated or left with its original status.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Unauthorized user cannot perform bulk operations on tasks",
+      "preconditions": [
+        "A user account exists that does not have permission to perform bulk operations (e.g., read-only role)",
+        "At least two tasks exist in the task list visible to this user"
+      ],
+      "steps": [
+        "Authenticate as the unauthorized/read-only user",
+        "Navigate to the task list view",
+        "Attempt to select tasks using checkboxes",
+        "Attempt to invoke a bulk operation (reassign, change status, or delete)"
+      ],
+      "expected_result": "The system denies the bulk operation and does not modify any tasks; an appropriate error or restriction message is displayed or the bulk action controls are not available to this user.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "Atomic update means either all selected tasks are updated successfully or none are (all-or-nothing transaction); a partial failure rolls back all changes.",
+    "A user must select at least one task before bulk action controls become actionable; the requirement does not specify behavior for zero-task selection, so it is assumed the bulk actions are disabled or not accessible.",
+    "There is a dedicated bulk actions interface (e.g., toolbar or context menu) that becomes available when one or more checkboxes are selected.",
+    "The system has a role or permission model that controls access to bulk operations; at least one role exists that lacks this permission.",
+    "Task statuses available for bulk change are the same statuses available for individual task updates.",
+    "The confirmation dialog for bulk delete contains at minimum a confirm and a cancel action."
+  ],
+  "notes": "The requirement does not specify: (1) what happens when a bulk operation partially fails on the server side beyond stating atomicity — error messaging and rollback behavior are not described; (2) whether there is a maximum limit on the number of tasks that can be selected for a bulk operation; (3) the exact UI mechanism for triggering bulk operations (toolbar, right-click menu, floating button, etc.); (4) whether selecting all tasks via a 'select all' checkbox is required — no test case covers this as it is not mentioned; (5) whether bulk operations span multiple pages of results or only the currently visible page; (6) the behavior when a selected task is modified or deleted by another user between selection and confirmation. These gaps may require additional test cases once the requirement is clarified."
+}

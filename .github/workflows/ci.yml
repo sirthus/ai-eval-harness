@@ -7,7 +7,7 @@
 #
 # Jobs:
 #   lint          — blocking: runs Ruff on the repo
-#   test          — blocking: runs pytest on Python 3.12 and 3.13
+#   test          — blocking: runs pytest on Python 3.11, 3.12, and 3.13
 #   quality-gate  — advisory: checks run manifests for evaluation regressions
 
 name: CI
@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 

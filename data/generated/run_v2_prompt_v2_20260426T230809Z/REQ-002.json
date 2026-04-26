@@ -1,0 +1,121 @@
+{
+  "requirement_id": "REQ-002",
+  "test_cases": [
+    {
+      "title": "Generic error message displayed on valid email with incorrect password",
+      "preconditions": [
+        "The user account with the test email exists in the system",
+        "The login form is accessible and visible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form"
+      ],
+      "expected_result": "A generic error message is displayed (e.g., 'Invalid credentials') that does not reference whether the email address exists or is registered",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Error message for invalid email does not differ from error message for valid email with wrong password",
+      "preconditions": [
+        "The login form is accessible and visible",
+        "The test email address is confirmed to NOT exist in the system"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a non-existent email address in the email field",
+        "Enter any password in the password field",
+        "Submit the login form",
+        "Record the exact error message text displayed",
+        "Navigate to the login page again",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form",
+        "Record the exact error message text displayed"
+      ],
+      "expected_result": "The error message displayed for the non-existent email is identical to the error message displayed for the valid email with incorrect password, preventing email enumeration",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Password field is cleared after a failed login attempt",
+      "preconditions": [
+        "The user account with the test email exists in the system",
+        "The login form is accessible and visible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form"
+      ],
+      "expected_result": "After the form is submitted and the error message is displayed, the password field contains no text (is empty)",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Failed login attempt is recorded in the system log",
+      "preconditions": [
+        "The user account with the test email exists in the system",
+        "Access to the system logs or an audit trail is available",
+        "The login form is accessible and visible"
+      ],
+      "steps": [
+        "Note the current timestamp",
+        "Navigate to the login page",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form",
+        "Access the system logs or audit trail using appropriate credentials"
+      ],
+      "expected_result": "A log entry for the failed login attempt exists, containing at minimum the timestamp and the associated email address, recorded at the time the form was submitted",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Successful login is not affected after a prior failed attempt",
+      "preconditions": [
+        "The user account with the test email exists in the system",
+        "The correct password for the account is known",
+        "The login form is accessible and visible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form",
+        "Observe the cleared password field and error message",
+        "Enter the correct password in the now-empty password field",
+        "Submit the login form again"
+      ],
+      "expected_result": "The user is successfully authenticated and redirected to the expected post-login destination with no residual error message displayed",
+      "priority": "medium",
+      "type": "positive"
+    },
+    {
+      "title": "Email field value is retained after a failed login attempt",
+      "preconditions": [
+        "The user account with the test email exists in the system",
+        "The login form is accessible and visible"
+      ],
+      "steps": [
+        "Navigate to the login page",
+        "Enter a valid, registered email address in the email field",
+        "Enter an incorrect password in the password field",
+        "Submit the login form"
+      ],
+      "expected_result": "After the failed submission, the email field still contains the originally entered email address while only the password field has been cleared",
+      "priority": "low",
+      "type": "edge_case"
+    }
+  ],
+  "assumptions": [
+    "The system has a mechanism (logs, audit trail, or database records) that QA can access to verify failed login attempts are recorded",
+    "A 'valid email' means an email address that is registered in the system; the requirement uses 'valid' to mean syntactically correct AND existing",
+    "Account lockout or rate-limiting behavior after multiple failed attempts is governed by a separate requirement and is not tested here",
+    "The post-login redirect destination after a successful login is defined elsewhere and is considered out of scope for REQ-002"
+  ],
+  "notes": "The requirement does not specify the exact text or format of the generic error message, making it impossible to assert a precise string; tests verify only that the message is non-specific about email existence. The requirement does not state whether the email field should be retained or cleared after a failed attempt — test case 6 assumes retention is the intended behavior but this should be confirmed. The format and required fields of the failed-attempt log entry are not defined, leaving the logging verification test partially ambiguous. No HTTP response code or API contract is specified, so test cases are written at the UI interaction level only."
+}

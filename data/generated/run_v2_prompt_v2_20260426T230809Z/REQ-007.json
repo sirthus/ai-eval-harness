@@ -1,0 +1,107 @@
+{
+  "requirement_id": "REQ-007",
+  "test_cases": [
+    {
+      "title": "Member receives access-denied response when navigating to admin URL",
+      "preconditions": [
+        "A user account with the 'member' role exists and is active",
+        "The user is authenticated and has a valid session",
+        "The admin dashboard URL is known"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'member' role",
+        "Attempt to navigate directly to the admin dashboard URL (e.g., via HTTP GET request or browser navigation)",
+        "Observe the HTTP response status and response body"
+      ],
+      "expected_result": "The system returns an access-denied response (e.g., HTTP 403 Forbidden or equivalent) indicating the member is not authorized to access the admin dashboard.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Member is redirected to their own dashboard after attempting to access an admin URL",
+      "preconditions": [
+        "A user account with the 'member' role exists and is active",
+        "The user is authenticated and has a valid session",
+        "The member's own dashboard URL is known"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'member' role",
+        "Attempt to navigate directly to the admin dashboard URL",
+        "Follow any redirects and observe the final destination URL"
+      ],
+      "expected_result": "The user is redirected to their own dashboard URL, and the final page displayed is the member's personal dashboard.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "Unauthorized access attempt by member is recorded in the audit log",
+      "preconditions": [
+        "A user account with the 'member' role exists and is active",
+        "The user is authenticated and has a valid session",
+        "Access to the audit log is available for verification (e.g., via admin interface or direct query)"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'member' role",
+        "Attempt to navigate to the admin dashboard URL",
+        "Access the audit log using an authorized account or mechanism",
+        "Search for an audit log entry corresponding to the attempted access"
+      ],
+      "expected_result": "The audit log contains an entry recording the unauthorized access attempt, including at minimum the member's user identity, the target admin URL, and a timestamp of the attempt.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Unauthenticated user attempting to access admin URL does not bypass access control",
+      "preconditions": [
+        "No active user session exists (user is logged out or no session cookie is present)"
+      ],
+      "steps": [
+        "Without authenticating, send an HTTP request directly to the admin dashboard URL",
+        "Observe the HTTP response status and final destination"
+      ],
+      "expected_result": "The system denies access and does not display the admin dashboard; the user is not granted access by circumventing the authentication layer.",
+      "priority": "high",
+      "type": "security"
+    },
+    {
+      "title": "Multiple sequential admin URL access attempts by a member each generate individual audit log entries",
+      "preconditions": [
+        "A user account with the 'member' role exists and is active",
+        "The user is authenticated and has a valid session",
+        "Access to the audit log is available for verification"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'member' role",
+        "Attempt to navigate to the admin dashboard URL three times in succession",
+        "Access the audit log using an authorized account or mechanism",
+        "Count the audit log entries corresponding to the member's unauthorized access attempts"
+      ],
+      "expected_result": "The audit log contains exactly three separate entries, one for each individual unauthorized access attempt.",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "User with 'admin' role can successfully access the admin dashboard",
+      "preconditions": [
+        "A user account with the 'admin' role exists and is active",
+        "The user is authenticated and has a valid session"
+      ],
+      "steps": [
+        "Authenticate as a user with the 'admin' role",
+        "Navigate to the admin dashboard URL",
+        "Observe the HTTP response status and page content"
+      ],
+      "expected_result": "The admin dashboard is successfully returned (e.g., HTTP 200 OK) and the admin dashboard content is displayed without redirection or access denial.",
+      "priority": "high",
+      "type": "positive"
+    }
+  ],
+  "assumptions": [
+    "A distinct 'admin' role exists in the system that is separate from the 'member' role and is permitted to access the admin dashboard.",
+    "The audit log is a persistent, structured record accessible to authorized parties for verification.",
+    "There is at least one admin dashboard URL that is representative; if multiple admin URLs exist, the access control and audit logging behavior applies to all of them.",
+    "The access-denied response and the redirect both occur as part of the same request/response cycle (i.e., the member is not shown the admin dashboard content even momentarily before being redirected).",
+    "The audit log entry is created regardless of whether the member's session is otherwise valid."
+  ],
+  "notes": "The requirement states both an 'access-denied response' and a 'redirect to the user's own dashboard', which may be contradictory in standard HTTP semantics (a 403 Forbidden is typically not combined with a redirect). It is unclear whether the system should return a 403 with a redirect header, or first redirect and then show an error on the member dashboard. Test cases have been written to cover each behavior independently. Additionally, the requirement does not specify what fields must be captured in the audit log entry (e.g., IP address, timestamp, user ID, URL attempted); the test case assumes a minimum viable set. The requirement does not specify behavior for users with roles other than 'member' or 'admin' (e.g., 'moderator'), so no test cases cover those roles. The exact format of 'their own dashboard' URL is not specified."
+}

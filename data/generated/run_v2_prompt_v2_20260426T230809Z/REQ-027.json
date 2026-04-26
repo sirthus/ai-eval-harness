@@ -1,0 +1,101 @@
+{
+  "requirement_id": "REQ-027",
+  "test_cases": [
+    {
+      "title": "Authenticated user stays within rate limit — requests succeed",
+      "preconditions": [
+        "A valid authenticated user account exists with a fresh rate-limit window (no prior requests in the current minute)"
+      ],
+      "steps": [
+        "Authenticate and obtain a valid API token for the test user",
+        "Send exactly 100 API requests within a 60-second window using the same authenticated token",
+        "Record the HTTP status code for each response"
+      ],
+      "expected_result": "All 100 requests receive HTTP 200 (or the endpoint's normal success code); no HTTP 429 is returned",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Authenticated user exceeds rate limit — HTTP 429 with Retry-After header returned",
+      "preconditions": [
+        "A valid authenticated user account exists with a fresh rate-limit window",
+        "The API is accessible and the user's token is valid"
+      ],
+      "steps": [
+        "Authenticate and obtain a valid API token for the test user",
+        "Send 101 API requests within a 60-second window using the same authenticated token",
+        "Capture the HTTP status code and response headers of the 101st request"
+      ],
+      "expected_result": "The 101st request receives HTTP 429 Too Many Requests, and the response includes a 'Retry-After' header with a positive integer value representing the number of seconds until the rate limit resets",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Retry-After header value is accurate — request succeeds after waiting",
+      "preconditions": [
+        "A valid authenticated user account exists",
+        "The user has already received an HTTP 429 response with a Retry-After header value of N seconds"
+      ],
+      "steps": [
+        "Record the Retry-After header value N from the HTTP 429 response",
+        "Wait exactly N seconds",
+        "Send one additional API request using the same authenticated token",
+        "Record the HTTP status code of this new request"
+      ],
+      "expected_result": "The request sent after waiting N seconds receives HTTP 200 (or the endpoint's normal success code), indicating the rate-limit window has reset",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Rate limits are enforced per user — one user's limit does not affect another",
+      "preconditions": [
+        "Two distinct authenticated user accounts exist (User A and User B), each with a fresh rate-limit window"
+      ],
+      "steps": [
+        "Authenticate and obtain valid API tokens for User A and User B",
+        "Send 101 API requests within a 60-second window using User A's token",
+        "Confirm User A receives HTTP 429 on the 101st request",
+        "Immediately send one API request using User B's token"
+      ],
+      "expected_result": "User B's request receives HTTP 200 (or the endpoint's normal success code), confirming rate limiting is scoped per authenticated user and not shared across accounts",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Unauthenticated requests are rate-limited by IP address — exceeding limit returns HTTP 429",
+      "preconditions": [
+        "The API endpoint accepts unauthenticated requests",
+        "The source IP address has not made requests in the current rate-limit window"
+      ],
+      "steps": [
+        "Send unauthenticated API requests from a single IP address until the rate limit for that IP is exceeded within a 60-second window",
+        "Capture the HTTP status code and response headers of the first request that crosses the limit"
+      ],
+      "expected_result": "Once the IP-based limit is exceeded, the API returns HTTP 429 Too Many Requests with a Retry-After header; prior requests within the limit received normal success responses",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Unauthenticated request from different IP is not affected by another IP's rate limit",
+      "preconditions": [
+        "IP address A has already exceeded its unauthenticated rate limit and is receiving HTTP 429",
+        "IP address B has not made any requests in the current rate-limit window (simulated via proxy or test environment)"
+      ],
+      "steps": [
+        "Send one unauthenticated API request from IP address B",
+        "Record the HTTP status code of the response"
+      ],
+      "expected_result": "The request from IP address B receives HTTP 200 (or the endpoint's normal success code), confirming IP-based rate limiting is scoped per IP address",
+      "priority": "medium",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "The rate-limit window is a fixed 60-second sliding or tumbling window; the exact window type (sliding vs. fixed/tumbling) is not specified and may affect boundary test design",
+    "Unauthenticated requests share the same rate-limit threshold (100 requests per minute) as authenticated users, just keyed by IP instead of user identity, since the requirement does not specify a different limit for unauthenticated requests",
+    "The Retry-After header value is expressed as an integer number of seconds (delta-seconds), not an HTTP date",
+    "The API endpoint used for testing returns a consistent success status (e.g., HTTP 200) under normal conditions",
+    "Test infrastructure allows control over source IP address to validate IP-based rate limiting for unauthenticated users"
+  ],
+  "notes": "1. The requirement does not specify the rate-limit threshold for unauthenticated (IP-based) requests — it is assumed to be the same 100 req/min, but this is ambiguous and should be clarified. 2. The type of rate-limit window (sliding window vs. fixed/tumbling window) is not defined; this significantly affects boundary behavior at the 100-request mark and the accuracy of Retry-After values. 3. It is unclear whether authenticated requests are also subject to an IP-based secondary limit, or if authentication fully replaces IP tracking. 4. The requirement does not address behavior when the Retry-After period has partially elapsed (e.g., sending a request 1 second before reset). 5. There is no mention of rate-limit headers (e.g., X-RateLimit-Remaining) being returned on successful requests; coverage for those is excluded. 6. Performance testing to verify the rate-limiting mechanism holds under concurrent high-volume traffic is out of scope for these functional test cases but is a coverage gap."
+}

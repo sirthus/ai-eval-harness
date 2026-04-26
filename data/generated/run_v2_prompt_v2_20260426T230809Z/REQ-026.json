@@ -1,0 +1,106 @@
+{
+  "requirement_id": "REQ-026",
+  "test_cases": [
+    {
+      "title": "PDF invoice is automatically generated at the end of a billing period",
+      "preconditions": [
+        "A user account exists with a valid subscription plan",
+        "The billing period for the user has just completed",
+        "The billing system is operational"
+      ],
+      "steps": [
+        "Allow a billing period to complete for the subscribed user",
+        "Navigate to the user's billing history section",
+        "Locate the most recently generated invoice"
+      ],
+      "expected_result": "A PDF invoice is automatically present in the user's billing history immediately after the billing period ends, without any manual action required.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Generated PDF invoice contains all required fields",
+      "preconditions": [
+        "A billing period has completed for a user with a known name, billing address, plan name, and amount charged",
+        "An invoice has been automatically generated for that period"
+      ],
+      "steps": [
+        "Navigate to the user's billing history",
+        "Download the PDF invoice for the completed billing period",
+        "Open the downloaded PDF",
+        "Verify the presence and accuracy of: user's name, billing address, plan name, billing period start date, billing period end date, amount charged, and unique invoice number"
+      ],
+      "expected_result": "The PDF contains exactly the user's name, billing address, plan name, billing period start and end dates, amount charged, and a unique invoice number, all matching the account and plan data on record.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Each invoice is assigned a unique invoice number",
+      "preconditions": [
+        "At least two billing periods have completed for one or more users",
+        "Invoices have been generated for each completed period"
+      ],
+      "steps": [
+        "Navigate to the billing history of a user with multiple completed billing periods",
+        "Record the invoice number from each generated invoice",
+        "Cross-check invoice numbers across multiple users if possible"
+      ],
+      "expected_result": "No two invoices share the same invoice number; every invoice number is globally unique within the system.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Invoice is available and downloadable as PDF from billing history",
+      "preconditions": [
+        "A billing period has completed and an invoice has been generated",
+        "The user is authenticated and on their billing history page"
+      ],
+      "steps": [
+        "Log in as the user",
+        "Navigate to the billing history section",
+        "Locate the invoice for the completed billing period",
+        "Click the download option for the invoice",
+        "Verify the downloaded file format"
+      ],
+      "expected_result": "The downloaded file is a valid PDF document (MIME type application/pdf) that can be opened and is not corrupted.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User cannot access another user's invoice from billing history",
+      "preconditions": [
+        "Two separate user accounts exist, each with at least one completed billing period and generated invoice",
+        "Both users are known by their invoice numbers"
+      ],
+      "steps": [
+        "Log in as User A",
+        "Attempt to access or download the invoice belonging to User B by manipulating the invoice identifier in the request (e.g., modifying URL or API parameter)",
+        "Observe the system response"
+      ],
+      "expected_result": "The system denies access and returns an authorization error (e.g., HTTP 403 or equivalent), and User B's invoice data is not returned.",
+      "priority": "high",
+      "type": "permission"
+    },
+    {
+      "title": "No invoice is generated for a billing period that did not complete",
+      "preconditions": [
+        "A user account exists with an active subscription",
+        "The current billing period is still in progress (not yet completed)"
+      ],
+      "steps": [
+        "Navigate to the user's billing history",
+        "Check for any invoice entries corresponding to the ongoing billing period"
+      ],
+      "expected_result": "No invoice appears in the billing history for the in-progress billing period; only invoices for fully completed periods are listed.",
+      "priority": "medium",
+      "type": "negative"
+    }
+  ],
+  "assumptions": [
+    "A 'completed billing period' means a period that has ended and for which payment processing has concluded.",
+    "The unique invoice number is globally unique across all users, not just per user.",
+    "The billing history is accessible to authenticated users only via a dedicated section in the application.",
+    "The system exposes an invoice identifier (e.g., in a URL or API parameter) that can be used to test unauthorized access.",
+    "PDF validity can be assessed by file format inspection (MIME type and file header) in addition to visual inspection."
+  ],
+  "notes": "The requirement does not specify: (1) the exact timing or SLA for invoice generation after a billing period ends (immediate, within minutes, within hours); (2) whether invoices must be retained for a minimum period and any archival policy; (3) what happens if invoice generation fails — no retry, error notification, or fallback behavior is described; (4) whether the invoice PDF must meet any accessibility or locale/currency formatting standards; (5) the format or structure of the unique invoice number (sequential, UUID, etc.); (6) whether unauthenticated users or admin roles have any special access to invoices. These gaps may require additional test cases once clarified."
+}

@@ -1,0 +1,109 @@
+{
+  "requirement_id": "REQ-004",
+  "test_cases": [
+    {
+      "title": "Create task with assignee field left blank and verify successful save",
+      "preconditions": [
+        "User is authenticated and has permission to create tasks",
+        "A team exists with at least one task list or project",
+        "The task creation form is accessible"
+      ],
+      "steps": [
+        "Navigate to the task creation form",
+        "Enter a valid task title and any other required fields",
+        "Leave the assignee field blank",
+        "Submit the task creation form"
+      ],
+      "expected_result": "The task is saved successfully with no assignee set, and a success confirmation is returned without any validation error related to the assignee field.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Verify unassigned task appears in the team's unassigned task view",
+      "preconditions": [
+        "User is authenticated and has permission to create tasks",
+        "A team exists and the team's unassigned task view is accessible",
+        "At least one task has been created with no assignee"
+      ],
+      "steps": [
+        "Navigate to the team's unassigned task view",
+        "Locate the task created without an assignee"
+      ],
+      "expected_result": "The task created without an assignee is visible in the team's unassigned task view.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Verify task created with an assignee does not appear in the team's unassigned task view",
+      "preconditions": [
+        "User is authenticated and has permission to create tasks",
+        "A team exists with at least one member",
+        "The team's unassigned task view is accessible"
+      ],
+      "steps": [
+        "Navigate to the task creation form",
+        "Enter a valid task title and any other required fields",
+        "Select a team member in the assignee field",
+        "Submit the task creation form",
+        "Navigate to the team's unassigned task view",
+        "Search for the newly created task by title"
+      ],
+      "expected_result": "The task created with an assignee is not present in the team's unassigned task view.",
+      "priority": "medium",
+      "type": "negative"
+    },
+    {
+      "title": "Set assignee on an existing unassigned task after creation",
+      "preconditions": [
+        "User is authenticated and has permission to edit tasks",
+        "An unassigned task exists and is accessible",
+        "At least one team member is available to be assigned"
+      ],
+      "steps": [
+        "Navigate to the existing unassigned task",
+        "Edit the assignee field and select a team member",
+        "Save the changes to the task"
+      ],
+      "expected_result": "The task is updated successfully with the selected assignee, and the task no longer appears in the team's unassigned task view.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Remove assignee from a previously assigned task and verify it moves to unassigned view",
+      "preconditions": [
+        "User is authenticated and has permission to edit tasks",
+        "A task exists with an assignee set"
+      ],
+      "steps": [
+        "Navigate to the assigned task",
+        "Clear or remove the assignee field",
+        "Save the changes to the task",
+        "Navigate to the team's unassigned task view"
+      ],
+      "expected_result": "The task's assignee is removed successfully and the task now appears in the team's unassigned task view.",
+      "priority": "medium",
+      "type": "edge_case"
+    },
+    {
+      "title": "Attempt to create a task with blank assignee as an unauthenticated user",
+      "preconditions": [
+        "The user is not authenticated (logged out)"
+      ],
+      "steps": [
+        "Attempt to access the task creation form directly via URL or API endpoint",
+        "Submit a task creation request with the assignee field left blank"
+      ],
+      "expected_result": "The system denies the request and returns an authentication or authorization error; no task is created.",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "The assignee field is optional on the task creation form and not marked as required by the system.",
+    "A 'team's unassigned task view' is a distinct, accessible view or filter that shows only tasks with no assignee for a given team.",
+    "Only tasks belonging to the relevant team appear in that team's unassigned task view.",
+    "Any authenticated user with task creation permission can leave the assignee blank; there is no role restriction preventing blank assignees.",
+    "Removing an assignee from a previously assigned task returns it to the unassigned state, consistent with the requirement's intent."
+  ],
+  "notes": "The requirement does not specify who is permitted to set or change the assignee after creation (e.g., any team member, only the task creator, or only admins) — permission test cases for post-creation assignment editing are not fully coverable without clarification. The requirement also does not define what constitutes the 'team' scope for the unassigned task view (e.g., does a user belong to multiple teams, and which view is shown?). No observable UI element names are assumed since the requirement does not specify the interface. Coverage of concurrent editing or race conditions when two users simultaneously assign the same task is out of scope given the requirement text."
+}

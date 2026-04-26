@@ -1,0 +1,95 @@
+{
+  "requirement_id": "REQ-021",
+  "test_cases": [
+    {
+      "title": "Search returns exactly 25 results per page when total results exceed 25",
+      "preconditions": [
+        "At least 26 tasks exist in the system that match a known search query",
+        "User is authenticated and authorized to perform task searches"
+      ],
+      "steps": [
+        "Submit a search request with a query known to match more than 25 tasks",
+        "Inspect the response body for the list of returned task items"
+      ],
+      "expected_result": "The response contains exactly 25 task items in the results list",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Search response includes total result count and current page number",
+      "preconditions": [
+        "At least 1 task exists that matches the search query",
+        "User is authenticated and authorized to perform task searches"
+      ],
+      "steps": [
+        "Submit a search request with a query that matches at least one task",
+        "Inspect the response body for metadata fields"
+      ],
+      "expected_result": "The response includes a field for total number of matching results (reflecting the actual count of all matches) and a field for the current page number",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "User can navigate to a valid page number beyond the first page",
+      "preconditions": [
+        "At least 51 tasks exist that match the search query (ensuring at least 3 pages)",
+        "User is authenticated and authorized to perform task searches"
+      ],
+      "steps": [
+        "Submit a search request with a query matching more than 50 tasks and specify page 2",
+        "Inspect the response body for the current page number and result items"
+      ],
+      "expected_result": "The response returns up to 25 task items corresponding to page 2, and the current page number field equals 2",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Request for an invalid (out-of-range) page number returns an error",
+      "preconditions": [
+        "A search query is known to produce exactly 2 pages of results (26–50 total matches)",
+        "User is authenticated and authorized to perform task searches"
+      ],
+      "steps": [
+        "Submit a search request with the known query and specify page number 999",
+        "Inspect the response status code and body"
+      ],
+      "expected_result": "The system returns an error response (e.g., HTTP 400 or 404) indicating the requested page number is invalid or out of range",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Last page returns only the remaining items when total results are not a multiple of 25",
+      "preconditions": [
+        "Exactly 27 tasks exist that match the search query",
+        "User is authenticated and authorized to perform task searches"
+      ],
+      "steps": [
+        "Submit a search request with the query and specify page 2",
+        "Inspect the number of task items returned and the total result count in the response"
+      ],
+      "expected_result": "The response returns exactly 2 task items, the total result count equals 27, and the current page number equals 2",
+      "priority": "medium",
+      "type": "boundary"
+    },
+    {
+      "title": "Unauthenticated user cannot access task search results",
+      "preconditions": [
+        "No valid authentication token or session is present"
+      ],
+      "steps": [
+        "Submit a search request without any authentication credentials",
+        "Inspect the response status code and body"
+      ],
+      "expected_result": "The system returns an authentication error (e.g., HTTP 401) and does not return any task data",
+      "priority": "high",
+      "type": "permission"
+    }
+  ],
+  "assumptions": [
+    "Page numbers are 1-indexed (first page is page 1, not page 0)",
+    "The API accepts page number as a request parameter",
+    "Authentication is required to use the search feature, even though the requirement does not explicitly state an authentication mechanism",
+    "A page number of 0, negative numbers, or non-integer values are considered invalid"
+  ],
+  "notes": "The requirement does not specify the behavior when the search query returns zero results — it is unclear whether page 1 with 0 items and total=0 is returned or a specific error is given. The requirement does not define what constitutes a 'valid' page number beyond implied range constraints; the exact error code or message for invalid page navigation is not specified. The request parameter name for specifying the page number is not defined in the requirement. It is also unspecified whether partial pages (fewer than 25 items) on non-last pages are possible or how ties/sorting are handled across pages."
+}

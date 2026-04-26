@@ -1,0 +1,110 @@
+{
+  "requirement_id": "REQ-033",
+  "test_cases": [
+    {
+      "title": "Missing required field returns HTTP 422 with structured error for that field",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The JSON schema for the endpoint defines at least one required field",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body that omits one required field defined in the schema",
+        "Send a POST (or applicable HTTP method) request to the endpoint with that body and appropriate Content-Type: application/json header",
+        "Capture the HTTP response status code and response body"
+      ],
+      "expected_result": "The API returns HTTP 422 Unprocessable Entity, and the response body contains a structured array with at least one entry that includes the name of the missing required field, the invalid value (or its absence indicator), and a description stating the field is required.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Incorrect field type returns HTTP 422 with structured error identifying the field and type constraint",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The JSON schema defines at least one field with a specific type (e.g., integer, boolean, array)",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body where all required fields are present but one field is supplied with the wrong type (e.g., send a string where an integer is expected)",
+        "Send the request to the endpoint with Content-Type: application/json header",
+        "Capture the HTTP response status code and response body"
+      ],
+      "expected_result": "The API returns HTTP 422 Unprocessable Entity, and the response body contains a structured array with an entry that includes the name of the incorrectly typed field, the actual invalid value submitted, and a description of the type constraint violated.",
+      "priority": "high",
+      "type": "negative"
+    },
+    {
+      "title": "Value outside allowed range returns HTTP 422 with structured error describing the range constraint",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The JSON schema defines at least one field with an allowed range (e.g., minimum, maximum, minLength, maxLength, or enum values)",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body where all required fields are present and correctly typed, but one field's value falls outside the defined allowed range (e.g., a numeric value exceeding the maximum)",
+        "Send the request to the endpoint with Content-Type: application/json header",
+        "Capture the HTTP response status code and response body"
+      ],
+      "expected_result": "The API returns HTTP 422 Unprocessable Entity, and the response body contains a structured array with an entry that includes the out-of-range field name, the submitted invalid value, and a description of the range constraint that was violated.",
+      "priority": "high",
+      "type": "boundary"
+    },
+    {
+      "title": "Multiple simultaneous validation errors are all listed in the response array",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The JSON schema defines multiple required fields and typed or range-constrained fields",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body that simultaneously violates multiple schema constraints (e.g., omit one required field, set another field to the wrong type, and set a third field outside the allowed range)",
+        "Send the request to the endpoint with Content-Type: application/json header",
+        "Capture the HTTP response status code and response body",
+        "Parse the validation error array in the response body and count the distinct entries"
+      ],
+      "expected_result": "The API returns HTTP 422 Unprocessable Entity, and the structured error array in the response body contains a separate entry for each validation violation, each including the respective field name, invalid value, and constraint description — no violation is silently suppressed.",
+      "priority": "high",
+      "type": "edge_case"
+    },
+    {
+      "title": "Valid request body does not trigger HTTP 422",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The full JSON schema for the endpoint is known",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body that satisfies all schema constraints (all required fields present, correct types, values within allowed ranges)",
+        "Send the request to the endpoint with Content-Type: application/json header",
+        "Capture the HTTP response status code"
+      ],
+      "expected_result": "The API does not return HTTP 422; it returns a success status code (e.g., 200 OK or 201 Created) indicating the request was accepted and processed.",
+      "priority": "high",
+      "type": "positive"
+    },
+    {
+      "title": "Boundary value at the exact edge of an allowed range does not return HTTP 422",
+      "preconditions": [
+        "The API endpoint under test is available and accepting requests",
+        "The JSON schema defines at least one field with an explicit numeric or length boundary (e.g., maximum: 100)",
+        "A valid API client with appropriate credentials is available"
+      ],
+      "steps": [
+        "Construct a JSON request body where one constrained field is set to the exact boundary value (e.g., exactly the maximum allowed value)",
+        "Send the request to the endpoint with Content-Type: application/json header",
+        "Capture the HTTP response status code"
+      ],
+      "expected_result": "The API does not return HTTP 422; it returns a success status code, confirming that a value at the exact boundary is considered valid.",
+      "priority": "medium",
+      "type": "boundary"
+    }
+  ],
+  "assumptions": [
+    "The API uses JSON as the request and response body format, and clients must set Content-Type: application/json.",
+    "The structured error array is present directly in the response body (not in HTTP headers or a separate field wrapper that is not described by the requirement).",
+    "The term 'invalid value' for a missing required field may be represented as null, absent, or an equivalent absence indicator, since the requirement does not define a specific representation.",
+    "The API processes and reports all validation errors in a single response rather than failing on the first error, based on the requirement's use of 'each validation error'.",
+    "Authentication and authorization are handled separately and are not the focus of these test cases; a pre-authorized client is assumed."
+  ],
+  "notes": "The requirement does not specify the exact structure or key names of the error array entries (e.g., whether the field name key is 'field', 'path', or 'name'), so test case assertions around field naming are intentionally generic. The requirement does not clarify behavior when the request body is not valid JSON at all (i.e., a parse error before schema validation) — this may warrant an additional test case covering malformed JSON, with a possibly different status code (e.g., 400 Bad Request). The requirement does not address nested or deeply nested field references; test coverage for nested objects and arrays may need to be added once the schema is known. No performance or rate-limit criteria are stated, so no performance test cases are included."
+}
