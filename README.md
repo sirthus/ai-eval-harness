@@ -68,8 +68,8 @@ Decision bands on the weighted average:
 | Signal | Status |
 |---|---|
 | CI | GitHub Actions runs Ruff, tests, and advisory evaluation quality checks |
-| Tests | `make test` — 298 tests passing |
-| Coverage | `make test-cov` — 81% terminal coverage report |
+| Tests | `make test` — 324 tests passing |
+| Coverage | `make test-cov` — 84% terminal coverage report |
 | Linting | `make lint` runs Ruff |
 | Eval gate | `scripts/check_quality_gate.py` checks recent run manifests without calling model APIs |
 
@@ -79,7 +79,7 @@ Requires Python 3.11+. Use a virtual environment if your distribution blocks dir
 
 ```bash
 make install                                                # core + tests
-make demo                                                   # render committed run_v1 report (no API key)
+make demo                                                   # render committed run_v1 report **(no API key)**
 export ANTHROPIC_API_KEY="your_api_key_here"                # full pipeline needs a key
 harness run --config configs/run_v2_prompt_v2.yaml          # one API call per requirement; ~3–6 min for 40 items
 ```
