@@ -107,6 +107,28 @@ The repo has three levels of reporting:
 
 Comparison reporting is only meaningful when both runs use the same dataset version. Trend reporting keeps auto-scored math stable even when human-review annotations are present, which avoids mixing adjudicated context into the historical baseline.
 
+## CLI Subcommands
+
+All subcommands are available via `harness <subcommand>` or `python -m harness <subcommand>`.
+
+| Subcommand | What it does |
+|---|---|
+| `run` | Full pipeline: generate → evaluate → review queue → report in one step |
+| `generate` | Call the model for each requirement; write output artifacts to `data/generated/{run_id}/` |
+| `evaluate` | Score existing generated outputs against gold; write `scored_results.json` |
+| `report` | Write markdown and CSV report from scored results; add `--charts` for PNG output |
+| `review` | Launch the interactive human adjudication workflow for borderline samples |
+| `compare` | Side-by-side comparison of two runs on the same dataset |
+| `trend` | Multi-run history and trend report across all runs for a dataset |
+
+**Finding a run ID.** The run ID is printed to stdout at completion and appears as the directory name in `data/generated/` and as the filename in `data/runs/`. To see recent runs:
+
+```bash
+ls -t data/runs/*.json
+```
+
+The run ID is the filename stem, e.g. `run_v2_prompt_v2_20260426T230809Z`.
+
 ## Design Choices
 
 - **Small datasets by design**: the harness demonstrates evaluation discipline, not scale for its own sake.
